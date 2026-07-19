@@ -1,0 +1,56 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+wp-config.php
+
+# Archivos locales archivados por el script
+.local-archive/
+
+# Copias de seguridad
+*.bak
+*.backup
+*.backup-*
+*.backup.*
+*.old
+*~
+
+# Parches y diagnósticos locales
+patch_*.sh
+inspect_*.sh
+*_inspection_*.txt
+tools-test-*.php
+
+# Registros y temporales
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# WordPress generado o persistente
+wordpress/wp-content/uploads/
+wordpress/wp-content/cache/
+wordpress/wp-content/upgrade/
+wordpress/wp-content/debug.log
+
+# Dependencias
+vendor/
+node_modules/
+
+# IDE y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker local
+docker-compose.override.yml
+compose.override.yml

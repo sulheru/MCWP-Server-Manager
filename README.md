@@ -1,71 +1,131 @@
-# OptiGrid ONG Minecraft
+# OptiGrid Minecraft Manager
 
-Plataforma para gestionar un servidor solidario de Minecraft conectado a
-WordPress, Microsoft Entra ID y servicios internos de sincronización.
+OptiGrid Minecraft Manager is an open and modular platform for managing
+Minecraft servers through WordPress.
 
-## Componentes
+The project combines WordPress plugins, backend services and automation
+workers into a unified management platform capable of handling player
+identity, authentication, server access, synchronization and future
+extensions.
 
-```text
-WordPress
-├── mc-manager-azure-entra-id
-└── mc-manager-users
+The architecture follows a service-oriented design where infrastructure,
+business logic and game server remain fully decoupled, allowing every
+component to be deployed and scaled independently.
 
-Gateway
-└── API interna para operaciones sobre Minecraft mediante RCON
+---
 
-Sync Worker
-└── Sincronización periódica de usuarios, permisos y estados
+## Features
 
-Minecraft
-└── PaperMC desplegado en una VPS independiente
+- WordPress administration interface
+- Microsoft Entra ID authentication
+- Minecraft account verification
+- Server access management
+- Whitelist and blacklist synchronization
+- Background workers
+- REST Gateway
+- Secure RCON communication
+- WireGuard private networking
+- Docker-first architecture
+
+---
+
+## Architecture
+
+```
+                +-----------------------+
+                |      WordPress        |
+                |  Administration UI    |
+                +-----------+-----------+
+                            |
+                     Internal REST API
+                            |
+                +-----------v-----------+
+                |     Gateway API       |
+                +-----------+-----------+
+                            |
+                         RCON over VPN
+                            |
+                +-----------v-----------+
+                |      PaperMC          |
+                |   Minecraft Server    |
+                +-----------------------+
+
+                +-----------------------+
+                |     Sync Worker       |
+                | Background Automation |
+                +-----------------------+
 ```
 
-## Estructura del repositorio
+---
 
-```text
+## Repository Structure
+
+```
 .
 ├── docs/
-│   ├── architecture/
-│   └── diagrams/
 ├── gateway/
 ├── sync-worker/
 └── wordpress/
     └── wp-content/
         └── plugins/
+            ├── mc-manager-users/
             ├── mc-manager-azure-entra-id/
-            └── mc-manager-users/
+            └── ...
 ```
 
-## Arquitectura
+---
 
-WordPress, la base de datos, el gateway y el worker se ejecutan en la VPS web.
+## Design Principles
 
-PaperMC se ejecuta en una VPS independiente.
+- One VPS, one responsibility.
+- One container, one service.
+- Infrastructure contains no business logic.
+- Secure-by-default networking.
+- Docker-native deployment.
+- Modular and extensible architecture.
+- WordPress as the management platform.
+- Minecraft as an independent service.
 
-La comunicación administrativa entre ambas VPS se realiza mediante una red
-privada WireGuard. RCON no debe exponerse públicamente.
+---
 
-## Estado
+## Example Deployment
 
-Versión inicial del MVP:
+The reference deployment consists of two independent VPS instances.
 
-```text
-v0.1.0
-```
+**Web Platform**
 
-## Seguridad
+- WordPress
+- MySQL
+- Gateway API
+- Sync Worker
 
-No deben almacenarse en el repositorio:
+**Minecraft Platform**
 
-- Contraseñas.
-- Tokens OAuth.
-- Claves de Microsoft Entra ID.
-- Claves de WireGuard.
-- Credenciales de MySQL.
-- Contraseñas RCON.
-- Archivos `.env`.
-- Copias de seguridad con datos reales.
+- PaperMC
+- Private RCON endpoint
 
-## Licencia
+Both systems communicate exclusively through a WireGuard VPN.
 
-Pendiente de definir.
+---
+
+## Use Cases
+
+OptiGrid Minecraft Manager can be used for:
+
+- Community servers
+- Educational environments
+- Private networks
+- Membership-based servers
+- Enterprise Minecraft deployments
+- Charity projects
+- Multi-server infrastructures
+
+The first production deployment powers a charity Minecraft server whose
+revenues are donated to a children's cancer foundation, demonstrating the
+platform in a real-world scenario.
+
+---
+
+## License
+
+License to be defined.

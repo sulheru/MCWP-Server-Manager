@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Gestor MC - Gestión de Usuarios
  * Description: Módulo de Gestor MC para administrar usuarios de Minecraft, whitelist, estados de acceso y modos de juego.
- * Version: 0.5.4
+ * Version: 0.7.0
  * Author: OptiGrid IT
  * Author URI: https://optigrid-it.com
  * License: GPL-2.0-or-later
@@ -27,9 +27,8 @@ class Solidario_MC_Access {
         add_action('personal_options_update', [$this, 'save_profile_fields']);
         add_action('edit_user_profile_update', [$this, 'save_profile_fields']);
 
-        add_action('admin_menu', [$this, 'admin_menu'], 5);
-	add_action('admin_menu', [$this, 'remove_duplicate_parent_submenu'], 999);
-        add_action('admin_post_solidario_mc_save_all', [$this, 'handle_save_all']);
+        add_action('admin_menu', [$this, 'admin_menu'], 20);
+add_action('admin_post_solidario_mc_save_all', [$this, 'handle_save_all']);
         add_action('admin_post_solidario_mc_sync_all', [$this, 'handle_sync_all']);
 
         add_shortcode('solidario_mc_access_status', [$this, 'shortcode_status']);
@@ -45,7 +44,7 @@ class Solidario_MC_Access {
         $table = $this->table_name();
         $charset = $wpdb->get_charset_collate();
 
-        $sql = "CREATE TABLE IF NOT EXISTS {$table} (
+        $sql = "CREATE TABLE {$table} (
             user_id BIGINT(20) UNSIGNED NOT NULL,
             minecraft_uuid CHAR(36) NULL,
             minecraft_username VARCHAR(32) NULL,
@@ -54,6 +53,11 @@ class Solidario_MC_Access {
             gamemode_message TEXT NULL,
             gamemode_updated_at DATETIME NULL,
             is_active TINYINT(1) NOT NULL DEFAULT 0,
+            is_blacklisted TINYINT(1) NOT NULL DEFAULT 0,
+            banned_until DATETIME NULL,
+            ban_status VARCHAR(20) NOT NULL DEFAULT 'none',
+            ban_message TEXT NULL,
+            ban_updated_at DATETIME NULL,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (user_id),
             KEY minecraft_username_idx (minecraft_username)
@@ -109,6 +113,39 @@ class Solidario_MC_Access {
         return in_array($value, self::GAMEMODES, true) ? $value : 'survival';
     }
 
+    private function normalize_banned_until($value) {
+        $value = trim(sanitize_text_field($value));
+        if ($value === '') return null;
+
+        $local = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $value, wp_timezone());
+        $errors = DateTimeImmutable::getLastErrors();
+        if (!$local || (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            return false;
+        }
+
+        return $local->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
+    private function banned_until_for_input($value) {
+        if (empty($value)) return '';
+        try {
+            $utc = new DateTimeImmutable($value, new DateTimeZone('UTC'));
+            return $utc->setTimezone(wp_timezone())->format('Y-m-d\TH:i');
+        } catch (Exception $e) {
+            return '';
+        }
+    }
+
+    private function banned_until_for_display($value) {
+        if (empty($value)) return '-';
+        try {
+            $utc = new DateTimeImmutable($value, new DateTimeZone('UTC'));
+            return $utc->setTimezone(wp_timezone())->format('Y-m-d H:i');
+        } catch (Exception $e) {
+            return '-';
+        }
+    }
+
     private function get_access_row($user_id) {
         global $wpdb;
         return $wpdb->get_row(
@@ -128,7 +165,7 @@ class Solidario_MC_Access {
         return !empty($found);
     }
 
-    private function upsert($user_id, $uuid, $username, $active, $gamemode = 'survival') {
+    private function upsert($user_id, $uuid, $username, $active, $gamemode = 'survival', $discipline = null) {
         global $wpdb;
         $table = $this->table_name();
 
@@ -144,23 +181,22 @@ class Solidario_MC_Access {
             'is_active' => (int)$active,
             'updated_at' => current_time('mysql'),
         ];
+        $formats = ['%s','%s','%s','%d','%s'];
+
+        if (is_array($discipline)) {
+            $data['is_blacklisted'] = !empty($discipline['is_blacklisted']) ? 1 : 0;
+            $data['banned_until'] = $discipline['banned_until'] ?: null;
+            $formats[] = '%d';
+            $formats[] = '%s';
+        }
 
         if ($exists) {
-            return $wpdb->update(
-                $table,
-                $data,
-                ['user_id' => (int)$user_id],
-                ['%s','%s','%s','%d','%s'],
-                ['%d']
-            );
+            return $wpdb->update($table, $data, ['user_id' => (int)$user_id], $formats, ['%d']);
         }
 
         $data['user_id'] = (int)$user_id;
-        return $wpdb->insert(
-            $table,
-            $data,
-            ['%s','%s','%s','%d','%s','%d']
-        );
+        $formats[] = '%d';
+        return $wpdb->insert($table, $data, $formats);
     }
 
     private function sync_user_whitelist($user_id) {
@@ -190,12 +226,92 @@ class Solidario_MC_Access {
         ]);
     }
 
+    private function temporary_ban_is_active($banned_until) {
+        if (empty($banned_until)) return false;
+
+        try {
+            $until = new DateTimeImmutable($banned_until, new DateTimeZone('UTC'));
+            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+            return $until > $now;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    private function update_ban_status($user_id, $status, $message) {
+        global $wpdb;
+
+        $wpdb->update(
+            $this->table_name(),
+            [
+                'ban_status' => sanitize_key($status),
+                'ban_message' => sanitize_textarea_field((string)$message),
+                'ban_updated_at' => current_time('mysql'),
+            ],
+            ['user_id' => (int)$user_id],
+            ['%s', '%s', '%s'],
+            ['%d']
+        );
+    }
+
+    private function apply_blacklist_change($user_id, $enabled) {
+        $row = $this->get_access_row($user_id);
+        $username = $row['minecraft_username'] ?? '';
+
+        if ($username === '') {
+            $result = ['ok' => false, 'message' => 'Usuario sin nombre Minecraft'];
+            $this->update_ban_status($user_id, 'error', $result['message']);
+            return $result;
+        }
+
+        if ($enabled) {
+            $ban = $this->gateway_post('/player/ban', [
+                'username' => $username,
+                'reason' => 'Blacklist administrativa',
+            ]);
+
+            $remove = $this->gateway_post('/whitelist/remove', [
+                'username' => $username,
+            ]);
+
+            $ok = !empty($ban['ok']) && !empty($remove['ok']);
+            $message = 'Ban: '.($ban['message'] ?? 'sin respuesta')
+                .' | Whitelist remove: '.($remove['message'] ?? 'sin respuesta');
+
+            $this->update_ban_status($user_id, $ok ? 'applied' : 'error', $message);
+            return ['ok' => $ok, 'message' => $message];
+        }
+
+        if ($this->temporary_ban_is_active($row['banned_until'] ?? null)) {
+            $message = 'Blacklist retirada. Se conserva el baneo temporal vigente.';
+            $this->update_ban_status($user_id, 'temporary', $message);
+            return ['ok' => true, 'message' => $message];
+        }
+
+        $pardon = $this->gateway_post('/player/pardon', [
+            'username' => $username,
+        ]);
+
+        $whitelist = !empty($row['is_active'])
+            ? $this->gateway_post('/whitelist/add', ['username' => $username])
+            : $this->gateway_post('/whitelist/remove', ['username' => $username]);
+
+        $ok = !empty($pardon['ok']) && !empty($whitelist['ok']);
+        $message = 'Pardon: '.($pardon['message'] ?? 'sin respuesta')
+            .' | Whitelist: '.($whitelist['message'] ?? 'sin respuesta');
+
+        $this->update_ban_status($user_id, $ok ? 'none' : 'error', $message);
+        return ['ok' => $ok, 'message' => $message];
+    }
+
     public function render_profile_fields($user) {
         $row = $this->get_access_row($user->ID);
         $uuid = esc_attr($row['minecraft_uuid'] ?? '');
         $username = esc_attr($row['minecraft_username'] ?? '');
         $active = !empty($row['is_active']);
         $gamemode = $this->normalize_gamemode($row['gamemode'] ?? 'survival');
+        $blacklisted = !empty($row['is_blacklisted']);
+        $banned_until = esc_attr($this->banned_until_for_input($row['banned_until'] ?? null));
 
         echo '<h3>Solidario Minecraft Access</h3><table class="form-table">';
         echo '<tr><th><label for="solidario_mc_username">Minecraft username</label></th><td>';
@@ -214,11 +330,23 @@ class Solidario_MC_Access {
 
         echo '<tr><th>Acceso MC</th><td><label>';
         echo '<input type="checkbox" name="solidario_mc_active" value="1" '.checked($active, true, false).' /> Activo';
-        echo '</label></td></tr></table>';
+        echo '</label></td></tr>';
+
+        echo '<tr><th>Blacklist</th><td><label>';
+        echo '<input type="checkbox" name="solidario_mc_blacklisted" value="1" '.checked($blacklisted, true, false).' /> Bloqueo permanente';
+        echo '</label><p class="description">Se aplica inmediatamente mediante el Gateway. La base de datos continúa siendo la fuente de verdad.</p></td></tr>';
+
+        echo '<tr><th><label for="solidario_mc_banned_until">Baneado hasta</label></th><td>';
+        echo '<input type="datetime-local" name="solidario_mc_banned_until" id="solidario_mc_banned_until" value="'.$banned_until.'" />';
+        echo '<p class="description">Baneo temporal. Déjalo vacío para eliminarlo. Su aplicación automática corresponde a la siguiente entrega.</p></td></tr>';
+        echo '</table>';
     }
 
     public function save_profile_fields($user_id) {
         if (!current_user_can('edit_user', $user_id)) return false;
+
+        $before = $this->get_access_row($user_id);
+        $was_blacklisted = !empty($before['is_blacklisted']);
 
         $username = $this->normalize_mc_username($_POST['solidario_mc_username'] ?? '');
         if ($username === false) return false;
@@ -227,22 +355,32 @@ class Solidario_MC_Access {
         $uuid = sanitize_text_field($_POST['solidario_mc_uuid'] ?? '');
         $active = isset($_POST['solidario_mc_active']) ? 1 : 0;
         $gamemode = $this->normalize_gamemode($_POST['solidario_mc_gamemode'] ?? 'survival');
+        $blacklisted = isset($_POST['solidario_mc_blacklisted']) ? 1 : 0;
+        $banned_until = $this->normalize_banned_until($_POST['solidario_mc_banned_until'] ?? '');
+        if ($banned_until === false) return false;
 
-        $this->upsert($user_id, $uuid, $username, $active, $gamemode);
+        $saved = $this->upsert($user_id, $uuid, $username, $active, $gamemode, [
+            'is_blacklisted' => $blacklisted,
+            'banned_until' => $banned_until,
+        ]);
+
+        if ($saved === false) return false;
+
+        if ($was_blacklisted !== (bool)$blacklisted) {
+            $this->update_ban_status(
+                $user_id,
+                'pending',
+                $blacklisted
+                    ? 'Blacklist guardada. Aplicación inmediata pendiente.'
+                    : 'Retirada de blacklist guardada. Aplicación inmediata pendiente.'
+            );
+            $this->apply_blacklist_change($user_id, (bool)$blacklisted);
+        }
+
         return true;
     }
 
     public function admin_menu() {
-        add_menu_page(
-            'Gestor MC',
-            'Gestor MC-SRV',
-            'manage_options',
-            'gestor-mc-srv',
-            [$this, 'admin_page'],
-            'dashicons-shield',
-            58
-        );
-
         add_submenu_page(
             'gestor-mc-srv',
             'Gestión de Usuarios',
@@ -251,10 +389,6 @@ class Solidario_MC_Access {
             'solidario-mc-access',
             [$this, 'admin_page']
         );
-    }
-
-    public function remove_duplicate_parent_submenu(): void {
-        remove_submenu_page('gestor-mc-srv', 'gestor-mc-srv');
     }
 
     public function admin_page() {
@@ -278,7 +412,8 @@ class Solidario_MC_Access {
                    ms.last_login_at AS microsoft_last_login_at,
                    a.minecraft_uuid, a.minecraft_username, a.gamemode,
                    a.gamemode_status, a.gamemode_message, a.gamemode_updated_at,
-                   a.is_active, a.updated_at
+                   a.is_active, a.is_blacklisted, a.banned_until,
+                   a.ban_status, a.ban_message, a.ban_updated_at, a.updated_at
             FROM {$ms_table} ms
             JOIN {$wpdb->users} u ON u.ID = ms.wp_user_id
             LEFT JOIN {$this->table_name()} a ON a.user_id = u.ID
@@ -327,19 +462,20 @@ class Solidario_MC_Access {
 
         echo '<table id="solidario-mc-table" class="wp-list-table widefat fixed striped users" style="margin-top:12px;">';
         echo '<thead><tr>';
-        echo '<th>WP User</th><th>Microsoft</th><th>Minecraft username</th><th>UUID</th><th>Activo</th><th>Gamemode</th><th>Gamemode status</th><th>Actualizado</th>';
+        echo '<th>WP User</th><th>Microsoft</th><th>Activo</th><th>Gamemode</th><th>Gamemode status</th><th>Restricción</th><th>Baneado hasta</th><th>Actualizado</th>';
         echo '</tr></thead><tbody>';
 
         if (!$rows) {
-            echo '<tr><td colspan="7">No hay usuarios.</td></tr>';
+            echo '<tr><td colspan="8">No hay usuarios.</td></tr>';
         }
 
         foreach ($rows as $row) {
             $user_id = (int)$row['ID'];
-            $username = esc_attr($row['minecraft_username'] ?? '');
-            $uuid = esc_attr($row['minecraft_uuid'] ?? '');
             $active = !empty($row['is_active']);
             $gamemode = $this->normalize_gamemode($row['gamemode'] ?? 'survival');
+            $blacklisted = !empty($row['is_blacklisted']);
+            $banned_until_display = $this->banned_until_for_display($row['banned_until'] ?? null);
+            $restriction = $blacklisted ? 'Blacklist' : (!empty($row['banned_until']) ? 'Baneo temporal' : 'Sin restricciones');
 
             $search = strtolower(
                 ($row['user_login'] ?? '') . ' ' .
@@ -353,10 +489,8 @@ class Solidario_MC_Access {
             );
 
             echo '<tr data-search="'.esc_attr($search).'">';
-            echo '<td><strong>'.esc_html($row['user_login']).'</strong><br/><span>ID: '.esc_html($user_id).'</span></td>';
+            echo '<td><strong><a href="'.esc_url(get_edit_user_link($user_id)).'">'.esc_html($row['user_login']).'</a></strong><br/><span>ID: '.esc_html($user_id).'</span></td>';
             echo '<td>'.esc_html($row['microsoft_email'] ?: $row['user_email']).'<br/><small>Último login MS: '.esc_html($row['microsoft_last_login_at'] ?? '-').'</small></td>';
-            echo '<td><input type="text" name="users['.$user_id.'][minecraft_username]" value="'.$username.'" placeholder="player_name" /></td>';
-            echo '<td><input type="text" name="users['.$user_id.'][minecraft_uuid]" value="'.$uuid.'" placeholder="opcional" /></td>';
             echo '<td><label><input type="checkbox" name="users['.$user_id.'][is_active]" value="1" '.checked($active, true, false).' /> Activo</label></td>';
             $gm_status = esc_html($row['gamemode_status'] ?? 'none');
             $gm_message = esc_html($row['gamemode_message'] ?? '');
@@ -368,6 +502,8 @@ class Solidario_MC_Access {
             }
             echo '</select></td>';
             echo '<td><strong>'.$gm_status.'</strong><br/><small>'.$gm_message.'</small><br/><small>'.$gm_updated.'</small></td>';
+            echo '<td><strong>'.esc_html($restriction).'</strong></td>';
+            echo '<td>'.esc_html($banned_until_display).'</td>';
             echo '<td>'.esc_html($row['updated_at'] ?? '-').'</td>';
             echo '</tr>';
         }
@@ -481,18 +617,13 @@ class Solidario_MC_Access {
                 continue;
             }
 
-            $username = $this->normalize_mc_username($data['minecraft_username'] ?? '');
+            $existing = $this->get_access_row($user_id);
+            $username = $this->normalize_mc_username($existing['minecraft_username'] ?? '');
             if ($username === false) {
-                $errors[] = 'Nombre MC no válido para user_id '.$user_id;
+                $errors[] = 'Nombre MC almacenado no válido para user_id '.$user_id;
                 continue;
             }
-
-            if ($this->username_exists_elsewhere($username, $user_id)) {
-                $errors[] = 'Nombre MC duplicado: '.$username;
-                continue;
-            }
-
-            $uuid = sanitize_text_field($data['minecraft_uuid'] ?? '');
+            $uuid = sanitize_text_field($existing['minecraft_uuid'] ?? '');
             $active = isset($data['is_active']) ? 1 : 0;
             $gamemode = $this->normalize_gamemode($data['gamemode'] ?? 'survival');
 

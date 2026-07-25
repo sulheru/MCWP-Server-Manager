@@ -1,0 +1,158 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OptiGrid\MCManagerServer\Modules\Server;
+
+use OptiGrid\MCManagerServer\Gateway\GatewayClient;
+use Throwable;
+
+final class ServerSnapshot
+{
+    /**
+     * @param list<string> $warnings
+     */
+    private function __construct(
+        private readonly bool $gatewayAvailable,
+        private readonly string $status,
+        private readonly string $difficulty,
+        private readonly string $defaultGamemode,
+        private readonly ?int $playersOnline,
+        private readonly ?int $maxPlayers,
+        private readonly ?int $worldCount,
+        private readonly ?int $loadedChunks,
+        private readonly string $checkedAt,
+        private readonly array $warnings
+    ) {
+    }
+
+    public static function collect(GatewayClient $client): self
+    {
+        $warnings = [];
+        $server = [];
+        $world = [];
+        $gatewayAvailable = false;
+
+        try {
+            $serverResponse = $client->server();
+            $server = $serverResponse->data() ?? [];
+            $gatewayAvailable = true;
+        } catch (Throwable $exception) {
+            $warnings[] = sprintf(
+                __('No se pudo leer /server: %s', 'mc-manager-server'),
+                $exception->getMessage()
+            );
+        }
+
+        try {
+            $worldResponse = $client->worldState();
+            $world = $worldResponse->data() ?? [];
+            $gatewayAvailable = true;
+        } catch (Throwable $exception) {
+            $warnings[] = sprintf(
+                __('No se pudo leer /world/state: %s', 'mc-manager-server'),
+                $exception->getMessage()
+            );
+        }
+
+        $runtime = is_array($server['runtime'] ?? null) ? $server['runtime'] : [];
+        $capacity = is_array($server['capacity'] ?? null) ? $server['capacity'] : [];
+
+        $difficultyRaw = $runtime['difficulty'] ?? $server['difficulty'] ?? null;
+        if (is_array($difficultyRaw)) {
+            $difficultyRaw = $difficultyRaw['value'] ?? null;
+        }
+
+        $gamemodeRaw = $runtime['default_gamemode']
+            ?? $runtime['defaultGamemode']
+            ?? $server['default_gamemode']
+            ?? $server['defaultGamemode']
+            ?? null;
+
+        $playersOnline = self::intOrNull(
+            $capacity['players_online']
+            ?? $capacity['online']
+            ?? $server['players_online']
+            ?? null
+        );
+
+        $maxPlayers = self::intOrNull(
+            $capacity['max_players']
+            ?? $capacity['max']
+            ?? $server['max_players']
+            ?? null
+        );
+
+        $worlds = $world['worlds'] ?? $world['data']['worlds'] ?? null;
+        $worldCount = null;
+        if (is_array($worlds)) {
+            $worldCount = count($worlds);
+        } elseif (isset($world['world_count'])) {
+            $worldCount = self::intOrNull($world['world_count']);
+        }
+
+        $loadedChunks = self::intOrNull(
+            $world['loaded_chunks']
+            ?? $world['chunks_loaded']
+            ?? $world['summary']['loaded_chunks']
+            ?? null
+        );
+
+        $status = (string) (
+            $server['status']
+            ?? (($server['online'] ?? false) ? 'online' : 'unknown')
+        );
+
+        $checkedAt = (string) (
+            $server['checked_at']
+            ?? $world['checked_at']
+            ?? current_time('mysql')
+        );
+
+        return new self(
+            $gatewayAvailable,
+            strtolower(trim($status)),
+            self::normalizeEnum($difficultyRaw, 'unknown'),
+            self::normalizeEnum($gamemodeRaw, 'unknown'),
+            $playersOnline,
+            $maxPlayers,
+            $worldCount,
+            $loadedChunks,
+            $checkedAt,
+            $warnings
+        );
+    }
+
+    private static function normalizeEnum(mixed $value, string $default): string
+    {
+        return is_scalar($value) && trim((string) $value) !== ''
+            ? strtolower(trim((string) $value))
+            : $default;
+    }
+
+    private static function intOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
+    }
+
+    public function gatewayAvailable(): bool { return $this->gatewayAvailable; }
+    public function status(): string { return $this->status; }
+    public function difficulty(): string { return $this->difficulty; }
+    public function defaultGamemode(): string { return $this->defaultGamemode; }
+    public function playersOnline(): ?int { return $this->playersOnline; }
+    public function maxPlayers(): ?int { return $this->maxPlayers; }
+    public function worldCount(): ?int { return $this->worldCount; }
+    public function loadedChunks(): ?int { return $this->loadedChunks; }
+    public function checkedAt(): string { return $this->checkedAt; }
+
+    /** @return list<string> */
+    public function warnings(): array { return $this->warnings; }
+}

@@ -1,0 +1,863 @@
+import json
+import os
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+import mysql.connector
+
+
+VERSION = "0.4.0"
+
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_NAME = os.getenv("DB_NAME", "wordpress_and_mc")
+DB_USER = os.getenv("DB_USER", "wordpress")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+
+GATEWAY_URL = os.getenv(
+    "GATEWAY_URL",
+    "http://minecraft-gateway:8000",
+).rstrip("/")
+
+POLL_SECONDS = max(5, int(os.getenv("POLL_SECONDS", "10")))
+DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
+HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "8"))
+
+ALLOWED_PLAYER_GAMEMODES = {
+    "survival",
+    "creative",
+    "adventure",
+    "spectator",
+}
+
+ALLOWED_DIFFICULTIES = {
+    "peaceful",
+    "easy",
+    "normal",
+    "hard",
+}
+
+ALLOWED_DEFAULT_GAMEMODES = {
+    "survival",
+    "creative",
+    "adventure",
+    "spectator",
+}
+
+TELEMETRY_DIR = Path(
+    os.getenv("TELEMETRY_DIR", "/app/telemetry")
+)
+HEARTBEAT_FILE = TELEMETRY_DIR / "worker-heartbeat.json"
+
+
+def log(message):
+    print(f"[mc-sync-worker] {message}", flush=True)
+
+
+def clean_message(value, maximum=1000):
+    text = str(value).replace("\x00", "").strip()
+    return text[:maximum]
+
+
+def write_heartbeat(
+    status,
+    rows_count=None,
+    error=None,
+    server_settings_rows=None,
+):
+    TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "timestamp": time.time(),
+        "status": status,
+        "version": VERSION,
+        "poll_seconds": POLL_SECONDS,
+        "dry_run": DRY_RUN,
+        "rows": rows_count,
+        "server_settings_rows": server_settings_rows,
+        "error": error,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    tmp = HEARTBEAT_FILE.with_suffix(".tmp")
+    tmp.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    tmp.replace(HEARTBEAT_FILE)
+
+
+def db_connect():
+    return mysql.connector.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        autocommit=False,
+        charset="utf8mb4",
+        use_unicode=True,
+    )
+
+
+# ---------------------------------------------------------------------
+# Reconciliación de usuarios existente
+# ---------------------------------------------------------------------
+
+def user_rows():
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT
+                a.user_id,
+                a.minecraft_username,
+                a.is_active,
+                a.gamemode,
+                a.is_blacklisted,
+                a.banned_until,
+                u.user_login
+            FROM wp_solidario_mc_access a
+            JOIN wp_users u
+              ON u.ID = a.user_id
+            WHERE a.minecraft_username IS NOT NULL
+              AND a.minecraft_username <> ''
+            ORDER BY a.user_id
+            """
+        )
+        return cursor.fetchall()
+    finally:
+        connection.close()
+
+
+def update_user_telemetry(uid, ws, wm, bs, bm):
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE wp_solidario_mc_access
+            SET
+                whitelist_status = %s,
+                whitelist_message = %s,
+                whitelist_updated_at = NOW(),
+                ban_status = %s,
+                ban_message = %s,
+                ban_updated_at = NOW()
+            WHERE user_id = %s
+            """,
+            (ws, wm, bs, bm, uid),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def gateway_request(method, path, payload=None):
+    body = None
+    headers = {
+        "Accept": "application/json",
+    }
+
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    request = urllib.request.Request(
+        GATEWAY_URL + path,
+        data=body,
+        headers=headers,
+        method=method,
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=HTTP_TIMEOUT,
+        ) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+            return json.loads(raw) if raw else {}
+
+    except urllib.error.HTTPError as exc:
+        response_body = exc.read().decode(
+            "utf-8",
+            errors="replace",
+        )
+        raise RuntimeError(
+            f"Gateway HTTP {exc.code}: {response_body}"
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            f"Gateway no disponible: {exc.reason}"
+        ) from exc
+
+    except TimeoutError as exc:
+        raise RuntimeError(
+            f"Gateway timeout después de {HTTP_TIMEOUT}s"
+        ) from exc
+
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "Gateway devolvió JSON inválido"
+        ) from exc
+
+
+def exists(path):
+    return bool(gateway_request("GET", path).get("exists"))
+
+
+def action(path, payload):
+    if DRY_RUN:
+        return {"result": f"dry-run {path}"}
+
+    return gateway_request("POST", path, payload)
+
+
+def future(value):
+    if not value:
+        return False
+
+    if isinstance(value, datetime):
+        date_value = value
+    else:
+        date_value = datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        )
+
+    if date_value.tzinfo is None:
+        date_value = date_value.replace(tzinfo=timezone.utc)
+
+    return (
+        date_value.astimezone(timezone.utc)
+        > datetime.now(timezone.utc)
+    )
+
+
+def reconcile_user(row):
+    uid = int(row["user_id"])
+    name = row["minecraft_username"]
+
+    active = bool(row["is_active"])
+    blacklisted = bool(row["is_blacklisted"])
+    temporarily_banned = future(row["banned_until"])
+
+    banned = blacklisted or temporarily_banned
+    wanted_whitelist = active and not banned
+
+    banned_now = exists(f"/player/ban/exists/{name}")
+    whitelist_now = exists(f"/whitelist/exists/{name}")
+
+    ban_messages = []
+    whitelist_messages = []
+
+    if banned:
+        if not banned_now:
+            if blacklisted:
+                reason = "Blacklist administrativa"
+            else:
+                reason = (
+                    "Baneo temporal hasta "
+                    f"{row['banned_until']}"
+                )
+
+            result = action(
+                "/player/ban",
+                {
+                    "username": name,
+                    "reason": reason,
+                },
+            ).get("result")
+
+            ban_messages.append(f"ban: {result}")
+        else:
+            ban_messages.append("ban: ya aplicado")
+
+        if whitelist_now:
+            result = action(
+                "/whitelist/remove",
+                {"username": name},
+            ).get("result")
+            whitelist_messages.append(f"remove: {result}")
+        else:
+            whitelist_messages.append(
+                "whitelist: ya ausente"
+            )
+
+        if DRY_RUN:
+            ban_status = "dry_run"
+            whitelist_status = "dry_run"
+        else:
+            ban_status = (
+                "blacklisted"
+                if blacklisted
+                else "temporary"
+            )
+            whitelist_status = "absent"
+
+    else:
+        if banned_now:
+            result = action(
+                "/player/pardon",
+                {"username": name},
+            ).get("result")
+            ban_messages.append(f"pardon: {result}")
+        else:
+            ban_messages.append("ban: ausente")
+
+        if wanted_whitelist and not whitelist_now:
+            result = action(
+                "/whitelist/add",
+                {"username": name},
+            ).get("result")
+            whitelist_messages.append(f"add: {result}")
+
+        elif not wanted_whitelist and whitelist_now:
+            result = action(
+                "/whitelist/remove",
+                {"username": name},
+            ).get("result")
+            whitelist_messages.append(f"remove: {result}")
+
+        else:
+            whitelist_messages.append(
+                "whitelist: estado correcto"
+            )
+
+        if DRY_RUN:
+            ban_status = "dry_run"
+            whitelist_status = "dry_run"
+        else:
+            ban_status = "none"
+            whitelist_status = (
+                "present"
+                if wanted_whitelist
+                else "absent"
+            )
+
+    mode = row["gamemode"]
+
+    if mode not in ALLOWED_PLAYER_GAMEMODES:
+        mode = "survival"
+
+    if active and not banned:
+        result = action(
+            "/player/gamemode",
+            {
+                "username": name,
+                "gamemode": mode,
+            },
+        ).get("result")
+
+        whitelist_messages.append(
+            f"gamemode: {result}"
+        )
+
+    update_user_telemetry(
+        uid,
+        whitelist_status,
+        " | ".join(whitelist_messages),
+        ban_status,
+        " | ".join(ban_messages),
+    )
+
+    log(
+        f"user_id={uid} "
+        f"wp={row['user_login']} "
+        f"mc={name} "
+        f"blacklist={int(blacklisted)} "
+        f"temporary={int(temporarily_banned)} "
+        f"active={int(active)} "
+        f"desired_banned={int(banned)} "
+        f"desired_whitelist={int(wanted_whitelist)} "
+        f"dry_run={DRY_RUN}"
+    )
+
+
+def reconcile_users_once():
+    rows = user_rows()
+    errors = []
+
+    log(
+        f"version={VERSION} "
+        f"users={len(rows)} "
+        f"dry_run={DRY_RUN} "
+        f"gateway={GATEWAY_URL}"
+    )
+
+    for row in rows:
+        try:
+            reconcile_user(row)
+
+        except Exception as exc:
+            message = clean_message(exc)
+            errors.append(
+                f"user_id={row['user_id']}: {message}"
+            )
+
+            log(
+                f"user_id={row['user_id']} "
+                f"error={message}"
+            )
+
+            try:
+                update_user_telemetry(
+                    int(row["user_id"]),
+                    "error",
+                    message,
+                    "error",
+                    message,
+                )
+            except Exception as telemetry_error:
+                log(
+                    "telemetry_error="
+                    f"{clean_message(telemetry_error)}"
+                )
+
+    return len(rows), errors
+
+
+# ---------------------------------------------------------------------
+# E5.2.3 · Reconciliación de ajustes globales
+# ---------------------------------------------------------------------
+
+def server_setting_rows():
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT
+                setting_key,
+                desired_value,
+                applied_value,
+                sync_status,
+                sync_message,
+                updated_at,
+                applied_at
+            FROM wp_mc_server_settings
+            WHERE sync_status IN (
+                'pending',
+                'error',
+                'applying'
+            )
+               OR (
+                    setting_key <> 'pvp'
+                    AND NOT (
+                        desired_value <=> applied_value
+                    )
+               )
+            ORDER BY setting_key
+            """
+        )
+        return cursor.fetchall()
+    finally:
+        connection.close()
+
+
+def update_setting_applying(setting_key, message):
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE wp_mc_server_settings
+            SET
+                sync_status = 'applying',
+                sync_message = %s
+            WHERE setting_key = %s
+            """,
+            (
+                clean_message(message),
+                setting_key,
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def update_setting_synced(
+    setting_key,
+    applied_value,
+    message,
+):
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE wp_mc_server_settings
+            SET
+                applied_value = %s,
+                sync_status = 'synced',
+                sync_message = %s,
+                applied_at = NOW()
+            WHERE setting_key = %s
+            """,
+            (
+                applied_value,
+                clean_message(message),
+                setting_key,
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def update_setting_error(setting_key, message):
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE wp_mc_server_settings
+            SET
+                sync_status = 'error',
+                sync_message = %s
+            WHERE setting_key = %s
+            """,
+            (
+                clean_message(message),
+                setting_key,
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def update_setting_unsupported(setting_key, message):
+    connection = db_connect()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE wp_mc_server_settings
+            SET
+                applied_value = NULL,
+                sync_status = 'unsupported',
+                sync_message = %s,
+                applied_at = NULL
+            WHERE setting_key = %s
+            """,
+            (
+                clean_message(message),
+                setting_key,
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def normalize_setting_value(value):
+    if value is None:
+        return ""
+
+    return str(value).strip().lower()
+
+
+def find_key_recursive(value, wanted_key):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if str(key).lower() == wanted_key.lower():
+                return child
+
+        for child in value.values():
+            result = find_key_recursive(
+                child,
+                wanted_key,
+            )
+            if result is not None:
+                return result
+
+    elif isinstance(value, list):
+        for child in value:
+            result = find_key_recursive(
+                child,
+                wanted_key,
+            )
+            if result is not None:
+                return result
+
+    return None
+
+
+def apply_difficulty(desired_value):
+    if desired_value not in ALLOWED_DIFFICULTIES:
+        raise ValueError(
+            "difficulty no permitida: "
+            f"{desired_value!r}"
+        )
+
+    gateway_request(
+        "POST",
+        "/server/difficulty",
+        {"value": desired_value},
+    )
+
+    observed_state = gateway_request(
+        "GET",
+        "/server",
+    )
+
+    observed_value = find_key_recursive(
+        observed_state,
+        "difficulty",
+    )
+
+    if observed_value is None:
+        raise RuntimeError(
+            "difficulty aplicada, pero GET /server "
+            "no devolvió el campo difficulty"
+        )
+
+    observed_value = normalize_setting_value(
+        observed_value
+    )
+
+    if observed_value != desired_value:
+        raise RuntimeError(
+            "difficulty aplicada, pero GET /server "
+            f"observó {observed_value!r} en vez de "
+            f"{desired_value!r}"
+        )
+
+    return (
+        observed_value,
+        "Aplicado y verificado mediante GET /server",
+    )
+
+
+def apply_default_gamemode(desired_value):
+    if desired_value not in ALLOWED_DEFAULT_GAMEMODES:
+        raise ValueError(
+            "default_gamemode no permitido: "
+            f"{desired_value!r}"
+        )
+
+    gateway_request(
+        "POST",
+        "/server/default-gamemode",
+        {"value": desired_value},
+    )
+
+    return (
+        desired_value,
+        "Aplicado mediante reconocimiento HTTP del Gateway",
+    )
+
+
+def reconcile_server_setting(row):
+    setting_key = str(row["setting_key"]).strip()
+    desired_value = normalize_setting_value(
+        row["desired_value"]
+    )
+
+    if setting_key == "pvp":
+        message = (
+            "No soportado por el Gateway: "
+            "sin operación RCON estándar"
+        )
+
+        if DRY_RUN:
+            log(
+                "server-setting "
+                f"key={setting_key} "
+                f"desired={desired_value} "
+                "action=would_mark_unsupported "
+                "dry_run=True"
+            )
+            return
+
+        update_setting_unsupported(
+            setting_key,
+            message,
+        )
+
+        log(
+            "server-setting "
+            f"key={setting_key} "
+            f"desired={desired_value} "
+            "result=unsupported"
+        )
+        return
+
+    if DRY_RUN:
+        if setting_key == "difficulty":
+            if desired_value not in ALLOWED_DIFFICULTIES:
+                raise ValueError(
+                    "difficulty no permitida: "
+                    f"{desired_value!r}"
+                )
+
+        elif setting_key == "default_gamemode":
+            if (
+                desired_value
+                not in ALLOWED_DEFAULT_GAMEMODES
+            ):
+                raise ValueError(
+                    "default_gamemode no permitido: "
+                    f"{desired_value!r}"
+                )
+
+        else:
+            raise ValueError(
+                f"setting_key no soportada: {setting_key}"
+            )
+
+        log(
+            "server-setting "
+            f"key={setting_key} "
+            f"desired={desired_value} "
+            "action=would_apply "
+            "dry_run=True"
+        )
+        return
+
+    update_setting_applying(
+        setting_key,
+        f"Aplicando {setting_key}={desired_value}",
+    )
+
+    if setting_key == "difficulty":
+        applied_value, message = apply_difficulty(
+            desired_value
+        )
+
+    elif setting_key == "default_gamemode":
+        applied_value, message = (
+            apply_default_gamemode(
+                desired_value
+            )
+        )
+
+    else:
+        raise ValueError(
+            f"setting_key no soportada: {setting_key}"
+        )
+
+    update_setting_synced(
+        setting_key,
+        applied_value,
+        message,
+    )
+
+    log(
+        "server-setting "
+        f"key={setting_key} "
+        f"desired={desired_value} "
+        f"applied={applied_value} "
+        "result=synced"
+    )
+
+
+def reconcile_server_settings_once():
+    rows = server_setting_rows()
+    errors = []
+
+    log(f"server-settings rows={len(rows)}")
+
+    for row in rows:
+        setting_key = str(row["setting_key"])
+
+        try:
+            reconcile_server_setting(row)
+
+        except Exception as exc:
+            message = clean_message(exc)
+            errors.append(
+                f"setting_key={setting_key}: {message}"
+            )
+
+            log(
+                "server-setting "
+                f"key={setting_key} "
+                f"desired={row['desired_value']} "
+                f"result=error "
+                f"error={message}"
+            )
+
+            if not DRY_RUN:
+                try:
+                    update_setting_error(
+                        setting_key,
+                        message,
+                    )
+                except Exception as db_error:
+                    log(
+                        "server-setting "
+                        f"key={setting_key} "
+                        "database_error="
+                        f"{clean_message(db_error)}"
+                    )
+
+    return len(rows), errors
+
+
+def cycle():
+    user_count, user_errors = reconcile_users_once()
+
+    settings_count, settings_errors = (
+        reconcile_server_settings_once()
+    )
+
+    errors = user_errors + settings_errors
+
+    write_heartbeat(
+        "ok" if not errors else "degraded",
+        rows_count=user_count,
+        server_settings_rows=settings_count,
+        error=(
+            " | ".join(errors)
+            if errors
+            else None
+        ),
+    )
+
+
+def main():
+    log(
+        f"starting version={VERSION} "
+        f"poll={POLL_SECONDS}s "
+        f"dry_run={DRY_RUN} "
+        f"gateway={GATEWAY_URL}"
+    )
+
+    while True:
+        try:
+            cycle()
+
+        except Exception as exc:
+            message = clean_message(exc)
+            log(f"cycle_error={message}")
+
+            try:
+                write_heartbeat(
+                    "error",
+                    error=message,
+                )
+            except Exception as heartbeat_error:
+                log(
+                    "heartbeat_error="
+                    f"{clean_message(heartbeat_error)}"
+                )
+
+        time.sleep(POLL_SECONDS)
+
+
+if __name__ == "__main__":
+    main()

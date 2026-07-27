@@ -1,0 +1,281 @@
+
+
+============================================================
+1. CONTEXTO
+============================================================
+Fecha: 2026-07-27T10:22:35+02:00
+Directorio solicitado: .
+PWD inicial: /home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0
+Usuario: sulheru
+Host: workstation
+
+
+============================================================
+2. RAÍZ REAL DEL REPOSITORIO
+============================================================
+true
+Raíz Git: /home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0
+Git dir: .git
+Ruta física: /home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0
+
+
+============================================================
+3. ESTADO Y SINCRONIZACIÓN
+============================================================
+## main...origin/main
+?? optigrid-git-sync-diagnostic-20260727-102235.txt
+?? optigrid-git-sync-diagnostic.sh
+
+HEAD local:
+eb24d70 (HEAD -> main, tag: v0.2.1, tag: v0.1.1, origin/main) feat(server): integrar edición runtime en la configuración activa
+
+Ramas:
+* main eb24d70 [origin/main] feat(server): integrar edición runtime en la configuración activa
+
+Remotos:
+origin	git@github.com:sulheru/MCWP-Server-Manager.git (fetch)
+origin	git@github.com:sulheru/MCWP-Server-Manager.git (push)
+
+Configuración de upstream:
+Rama actual: main
+Upstream: origin/main
+Diferencia local/remoto (behind ahead): 0	0
+
+
+============================================================
+4. CONFIGURACIÓN QUE PUEDE OCULTAR ARCHIVOS
+============================================================
+
+status.showUntrackedFiles:
+(no definido; valor normal = all)
+
+core.excludesFile:
+(no definido)
+
+Sparse checkout:
+false/no definido
+fatal: este árbol de trabajo no es escaso
+
+.git/info/exclude:
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~
+
+
+============================================================
+5. BÚSQUEDA DE GATEWAY Y WORKER
+============================================================
+
+Directorios y archivos coincidentes dentro de la raíz:
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/sync-worker
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway/GatewayClient.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway/GatewayClient.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway/GatewayClient.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway/GatewayClient.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Contracts/GatewayClientInterface.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php.bak-20260722-152510
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayException.php
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayResponse.php
+
+Archivos versionados coincidentes:
+wordpress/wp-content/plugins/mc-manager-server/src/Contracts/GatewayClientInterface.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php.bak-20260722-152510
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayException.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayResponse.php
+
+Archivos no versionados, incluidos los ignorados:
+!! wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway/GatewayClient.php
+!! wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway/GatewayClient.php
+!! wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway/GatewayClient.php
+!! wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway/GatewayClient.php
+
+
+============================================================
+6. MOTIVO DE IGNORADO
+============================================================
+
+Ruta: gateway
+Tipo: directorio
+Estado: NO VERSIONADO Y NO IGNORADO
+
+Ruta: sync-worker
+Tipo: directorio
+Estado: NO VERSIONADO Y NO IGNORADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway
+Tipo: directorio
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway/GatewayClient.php
+Tipo: archivo
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-20260722-173152/src/Gateway/GatewayClient.php
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway
+Tipo: directorio
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway/GatewayClient.php
+Tipo: archivo
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-181005/src/Gateway/GatewayClient.php
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway
+Tipo: directorio
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway/GatewayClient.php
+Tipo: archivo
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-183044/src/Gateway/GatewayClient.php
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway
+Tipo: directorio
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway/GatewayClient.php
+Tipo: archivo
+Estado: IGNORADO
+.gitignore:13:*.backup-*	wordpress/wp-content/plugins/mc-manager-server/.backup-e5-8-3-2-incremental-20260722-185255/src/Gateway/GatewayClient.php
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Contracts/GatewayClientInterface.php
+Tipo: archivo
+Estado: VERSIONADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Gateway
+Tipo: directorio
+Estado: VERSIONADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php
+Tipo: archivo
+Estado: VERSIONADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php.bak-20260722-152510
+Tipo: archivo
+Estado: VERSIONADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayException.php
+Tipo: archivo
+Estado: VERSIONADO
+
+Ruta: wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayResponse.php
+Tipo: archivo
+Estado: VERSIONADO
+
+
+============================================================
+7. REPOSITORIOS GIT ANIDADOS
+============================================================
+
+Directorios .git encontrados bajo la raíz:
+
+Submódulos declarados:
+(no hay .gitmodules)
+
+
+============================================================
+8. ARCHIVOS IGNORADOS RELEVANTES
+============================================================
+
+Reglas .gitignore que mencionan servicios, Python o directorios amplios:
+
+--- .gitignore ---
+11:*.bak
+12:*.backup
+13:*.backup-*
+14:*.backup.*
+15:*.old
+16:*~
+21:*_inspection_*.txt
+25:*.log
+26:*.tmp
+27:*.swp
+28:*.swo
+30:# Python
+32:*.py[cod]
+54:# Docker local
+55:docker-compose.override.yml
+56:compose.override.yml
+
+
+============================================================
+9. CONTENIDO DEL COMMIT LOCAL Y REMOTO
+============================================================
+
+Árbol de HEAD local, nivel 4, filtrado:
+wordpress/wp-content/plugins/mc-manager-server/src/Contracts/GatewayClientInterface.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php.bak-20260722-152510
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayException.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayResponse.php
+
+Árbol del upstream, filtrado:
+wordpress/wp-content/plugins/mc-manager-server/src/Contracts/GatewayClientInterface.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayClient.php.bak-20260722-152510
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayException.php
+wordpress/wp-content/plugins/mc-manager-server/src/Gateway/GatewayResponse.php
+
+Diferencias de nombres entre HEAD y upstream:
+
+
+============================================================
+10. DIRECTORIOS HERMANOS FUERA DEL REPOSITORIO
+============================================================
+Padre de la raíz: /home/sulheru/Documentos/mc-david
+/home/sulheru/Documentos/mc-david/Aladina/OCI/optigrid-deploy-sync-worker-v011.sh
+/home/sulheru/Documentos/mc-david/Aladina/OCI/worker-v011.py
+/home/sulheru/Documentos/mc-david/Aladina/optigrid-audit-package-gateway.sh
+/home/sulheru/Documentos/mc-david/Aladina/optigrid-sync-worker-diagnostic-David-WP-20260719-093737.tar.gz
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V0.1.0/gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V0.1.0/sync-worker
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/gateway
+/home/sulheru/Documentos/mc-david/WP-MC-MVP-V1.1.0/sync-worker
+
+
+============================================================
+11. DIAGNÓSTICO ORIENTATIVO
+============================================================
+Interpreta los resultados así:
+
+A) Las rutas aparecen como IGNORADAS:
+   Git no las mostrará en un status normal. Revisa la regla indicada por
+   "git check-ignore -v".
+
+B) Las rutas están fuera de la "Raíz Git":
+   El repositorio local que estás consultando no contiene físicamente esos
+   servicios. Git solo controla lo que está bajo su raíz.
+
+C) Existe un .git anidado:
+   Gateway o worker pueden ser repositorios independientes. El repositorio
+   padre no versionará su contenido normal.
+
+D) Son submódulos:
+   GitHub mostrará un enlace al commit del submódulo, no los archivos como
+   contenido normal del repositorio padre.
+
+E) "git ls-files" no los muestra:
+   Nunca fueron añadidos al índice de este repositorio, aunque estén en disco.
+
+F) HEAD y upstream coinciden pero faltan en ambos:
+   "Todo sincronizado" solo significa que los commits locales coinciden con
+   la rama remota. No significa que todos los archivos del servidor estén
+   versionados.
+
+G) La rama o el remoto no son los esperados:
+   Puedes estar sincronizado con otra rama, otro fork o incluso otro repositorio.

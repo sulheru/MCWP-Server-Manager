@@ -1,0 +1,241 @@
+
+==> Preflight
+[OK] Entorno verificado
+
+==> Creando backup
+[OK] Backup creado en /home/sulheru/david-manual-backup-20260727-141427
+
+==> Descargando o actualizando repositorio
+Cloning into '/home/sulheru/src/MCWP-Server-Manager'...
+[OK] Repositorio listo: /home/sulheru/src/MCWP-Server-Manager
+[OK] Commit: c5514bf
+
+==> Detectando estructura del repositorio
+[OK] Gateway: /home/sulheru/src/MCWP-Server-Manager/gateway
+[OK] Worker: /home/sulheru/src/MCWP-Server-Manager/sync-worker
+[OK] Plugins: /home/sulheru/src/MCWP-Server-Manager/wordpress/wp-content/plugins
+
+==> Inspeccionando instalador de MC Manager Server
+[WARN] No se encontraron referencias a dbDelta, CREATE TABLE o mc_server_settings
+[WARN] El plugin podría no crear wp_mc_server_settings durante la activación
+
+==> Deteniendo Gateway y Worker
+ Container solidario_mc_sync_worker Stopping 
+ Container solidario_mc_sync_worker Stopped 
+ Container solidario_mc_gateway Stopping 
+ Container solidario_mc_gateway Stopped 
+
+==> Copiando Gateway manualmente
+[OK] Gateway copiado
+
+==> Copiando Worker manualmente
+[OK] Worker copiado
+
+==> Copiando plugins manualmente
+[OK] Plugin copiado: mc-manager-server
+[OK] Plugin copiado: mc-manager-users
+[OK] Plugin copiado: mc-manager-azure-entra-id
+
+==> Validando docker-compose.yml
+[OK] Compose válido
+
+==> Reconstruyendo Gateway y Worker
+ Image david-mc-sync-worker Building 
+ Image david-minecraft-gateway Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.07kB done
+#1 DONE 0.0s
+
+#2 [minecraft-gateway internal] load build definition from Dockerfile
+#2 ...
+
+#3 [mc-sync-worker internal] load build definition from Dockerfile
+#3 transferring dockerfile: 503B done
+#3 DONE 0.6s
+
+#2 [minecraft-gateway internal] load build definition from Dockerfile
+#2 transferring dockerfile: 575B done
+#2 DONE 0.7s
+
+#4 [mc-sync-worker internal] load metadata for docker.io/library/python:3.12-slim
+#4 DONE 1.0s
+
+#5 [minecraft-gateway internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.2s
+
+#6 [mc-sync-worker internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.3s
+
+#7 [minecraft-gateway internal] load build context
+#7 DONE 0.0s
+
+#8 [mc-sync-worker internal] load build context
+#8 DONE 0.0s
+
+#9 [mc-sync-worker 1/8] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#9 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#9 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.2s done
+#9 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.2s done
+#9 DONE 0.3s
+
+#7 [minecraft-gateway internal] load build context
+#7 transferring context: 37.50kB done
+#7 DONE 0.2s
+
+#8 [mc-sync-worker internal] load build context
+#8 transferring context: 21.50kB done
+#8 DONE 0.3s
+
+#10 [minecraft-gateway 3/8] RUN groupadd --system app     && useradd --system --gid app --home-dir /app app
+#10 CACHED
+
+#11 [minecraft-gateway 4/8] COPY requirements.txt /app/requirements.txt
+#11 CACHED
+
+#12 [minecraft-gateway 5/8] RUN python -m pip install --no-cache-dir -r /app/requirements.txt
+#12 CACHED
+
+#13 [minecraft-gateway 6/8] COPY --chown=app:app main.py /app/main.py
+#13 CACHED
+
+#14 [minecraft-gateway 7/8] COPY --chown=app:app data /app/data
+#14 CACHED
+
+#15 [minecraft-gateway 2/8] WORKDIR /app
+#15 CACHED
+
+#16 [minecraft-gateway 8/8] RUN chown -R app:app /app
+#16 CACHED
+
+#15 [mc-sync-worker 2/8] WORKDIR /app
+#15 CACHED
+
+#17 [mc-sync-worker 4/7] COPY requirements.txt /app/requirements.txt
+#17 CACHED
+
+#18 [mc-sync-worker 5/7] RUN python -m pip install --no-cache-dir -r /app/requirements.txt
+#18 CACHED
+
+#19 [mc-sync-worker 6/7] COPY --chown=app:app worker.py /app/worker.py
+#19 CACHED
+
+#20 [mc-sync-worker 3/7] RUN groupadd --system app     && useradd --system --gid app --home-dir /app app
+#20 CACHED
+
+#21 [mc-sync-worker 7/7] RUN mkdir -p /app/data     && chown -R app:app /app
+#21 CACHED
+
+#22 [mc-sync-worker] exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:29e7a610497e35fbed254de4b723d9a6b6cf9492fcd195d2b047205f8aaebf5d
+#22 exporting manifest sha256:29e7a610497e35fbed254de4b723d9a6b6cf9492fcd195d2b047205f8aaebf5d 0.1s done
+#22 exporting config sha256:fef7ec861df2621837a5579124db9428e4cf2ad31a9819d0ae3bf8aa3cc64613 0.1s done
+#22 exporting attestation manifest sha256:f293926b13147ec2232b43efc0f8ec5d56077f8f6653f9473e67a34accbbb33d
+#22 exporting attestation manifest sha256:f293926b13147ec2232b43efc0f8ec5d56077f8f6653f9473e67a34accbbb33d 2.2s done
+#22 exporting manifest list sha256:270e60d78a2792b87641b6ed5da4a4d10b6732a40d44349b8284d06f3a993bb2
+#22 exporting manifest list sha256:270e60d78a2792b87641b6ed5da4a4d10b6732a40d44349b8284d06f3a993bb2 0.7s done
+#22 naming to docker.io/library/david-mc-sync-worker:latest
+#22 naming to docker.io/library/david-mc-sync-worker:latest 0.1s done
+#22 unpacking to docker.io/library/david-mc-sync-worker:latest
+#22 ...
+
+#23 [minecraft-gateway] exporting to image
+#23 exporting layers 0.0s done
+#23 exporting manifest sha256:59045e603f1bab65c6d43802504a9e30988881c9961185c0874df7dcd4f7c8b9 0.1s done
+#23 exporting config sha256:deaeafa771bbd59f6136a5c5b6ec3460d72dd6132a8a42d4fad764b72c58ca45 0.1s done
+#23 exporting attestation manifest sha256:4176b3087c96567f57718dceb5d011e219085264d6e471fa78161fc5897f0c1e 1.3s done
+#23 exporting manifest list sha256:42ba7db7eba95b8c37ad5d772c85472b7e735b1b8e0505c6cf8eb6ff01f83404 1.6s done
+#23 naming to docker.io/library/david-minecraft-gateway:latest 0.1s done
+#23 unpacking to docker.io/library/david-minecraft-gateway:latest 0.2s done
+#23 DONE 5.3s
+
+#22 [mc-sync-worker] exporting to image
+#22 unpacking to docker.io/library/david-mc-sync-worker:latest 0.2s done
+#22 DONE 5.3s
+
+#24 [minecraft-gateway] resolving provenance for metadata file
+#24 DONE 0.0s
+
+#25 [mc-sync-worker] resolving provenance for metadata file
+#25 DONE 0.0s
+ Image david-mc-sync-worker Built 
+ Image david-minecraft-gateway Built 
+[OK] Imágenes reconstruidas
+
+==> Levantando Gateway y Worker
+ Container solidario_db Running 
+ Container solidario_mc Running 
+ Container solidario_mc_gateway Recreate 
+ Container solidario_mc_gateway Recreated 
+ Container solidario_mc_sync_worker Recreate 
+ Container solidario_mc_sync_worker Recreated 
+ Container solidario_mc_gateway Starting 
+ Container solidario_mc_gateway Started 
+ Container solidario_mc_sync_worker Starting 
+ Container solidario_mc_sync_worker Started 
+
+==> Reiniciando WordPress
+[OK] WordPress reiniciado
+
+==> Esperando arranque
+NAME                       IMAGE                     COMMAND                  SERVICE             CREATED             STATUS                 PORTS
+solidario_db               mysql:8.0                 "docker-entrypoint.s…"   db                  3 weeks ago         Up 11 days             0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp
+solidario_debug            ubuntu:24.04              "bash -lc 'apt-get u…"   debug               2 months ago        Up 11 days             
+solidario_mc               itzg/minecraft-server     "/image/scripts/start"   minecraft           2 months ago        Up 11 days (healthy)   0.0.0.0:25565->25565/tcp, [::]:25565->25565/tcp
+solidario_mc_gateway       david-minecraft-gateway   "sh -c 'exec uvicorn…"   minecraft-gateway   27 seconds ago      Up 20 seconds          8000/tcp
+solidario_mc_sync_worker   david-mc-sync-worker      "python -u /app/work…"   mc-sync-worker      24 seconds ago      Up 18 seconds          
+solidario_web              wordpress:latest          "docker-entrypoint.s…"   wordpress           About an hour ago   Up 14 seconds          0.0.0.0:80->80/tcp, [::]:80->80/tcp
+
+==> Validando plugins dentro de WordPress
+[OK] Presente: mc-manager-server
+[OK] Presente: mc-manager-users
+[OK] Presente: mc-manager-azure-entra-id
+
+==> Intentando activar plugins con WP-CLI
+[WARN] WP-CLI no está instalado en el contenedor WordPress
+[WARN] Debes entrar en WordPress y desactivar/activar manualmente:
+  - mc-manager-server
+  - mc-manager-users
+  - mc-manager-azure-entra-id
+
+==> Comprobando Gateway
+{"status":"ok","service":"minecraft-gateway","version":"0.8.0"}
+[OK] Gateway accesible
+
+==> Logs recientes del Gateway
+2026-07-27T14:15:19.779662639Z INFO:     Started server process [1]
+2026-07-27T14:15:19.779716863Z INFO:     Waiting for application startup.
+2026-07-27T14:15:19.780153595Z INFO:     Application startup complete.
+2026-07-27T14:15:19.789169824Z INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-07-27T14:15:20.048134284Z INFO:     172.19.0.7:46794 - "GET /player/ban/exists/byKiller2 HTTP/1.1" 200 OK
+2026-07-27T14:15:20.051360007Z INFO:     172.19.0.7:46800 - "GET /whitelist/exists/byKiller2 HTTP/1.1" 200 OK
+2026-07-27T14:15:30.327406474Z INFO:     172.19.0.7:43312 - "GET /player/ban/exists/byKiller2 HTTP/1.1" 200 OK
+2026-07-27T14:15:30.329932552Z INFO:     172.19.0.7:43322 - "GET /whitelist/exists/byKiller2 HTTP/1.1" 200 OK
+2026-07-27T14:15:38.107714634Z INFO:     172.19.0.3:59628 - "GET /health HTTP/1.1" 200 OK
+
+==> Logs recientes del Worker
+2026-07-27T14:15:20.004709359Z [mc-sync-worker] starting version=0.4.1 poll=10s dry_run=True gateway=http://minecraft-gateway:8000
+2026-07-27T14:15:20.030430198Z [mc-sync-worker] version=0.4.1 users=1 dry_run=True gateway=http://minecraft-gateway:8000
+2026-07-27T14:15:20.263697258Z [mc-sync-worker] user_id=2 wp=mc_ms_0000000000000000 mc=byKiller2 blacklist=0 temporary=0 active=1 desired_banned=0 desired_whitelist=1 dry_run=True
+2026-07-27T14:15:20.305257116Z [mc-sync-worker] cycle_error=1146 (42S02): Table 'wordpress_and_mc.wp_mc_server_settings' doesn't exist
+2026-07-27T14:15:30.324413841Z [mc-sync-worker] version=0.4.1 users=1 dry_run=True gateway=http://minecraft-gateway:8000
+2026-07-27T14:15:31.260413282Z [mc-sync-worker] user_id=2 wp=mc_ms_0000000000000000 mc=byKiller2 blacklist=0 temporary=0 active=1 desired_banned=0 desired_whitelist=1 dry_run=True
+2026-07-27T14:15:31.279288434Z [mc-sync-worker] cycle_error=1146 (42S02): Table 'wordpress_and_mc.wp_mc_server_settings' doesn't exist
+
+============================================================
+COPIA MANUAL COMPLETADA
+Repositorio: /home/sulheru/src/MCWP-Server-Manager
+Commit:      c5514bf
+Backup:      /home/sulheru/david-manual-backup-20260727-141427
+Despliegue:  /home/sulheru/david
+============================================================
+
+ACCIÓN PENDIENTE:
+Entra en WordPress > Plugins y desactiva/activa, en este orden:
+  1. MC Manager Server
+  2. MC Manager Users
+  3. MC Manager Azure Entra ID
+
+DRY_RUN no ha sido modificado.

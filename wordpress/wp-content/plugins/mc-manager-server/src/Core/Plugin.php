@@ -8,6 +8,9 @@ use OptiGrid\MCManagerServer\Contracts\GatewayClientInterface;
 use OptiGrid\MCManagerServer\Gateway\GatewayClient;
 use OptiGrid\MCManagerServer\Modules\Server\ServerModule;
 use OptiGrid\MCManagerServer\Modules\Summary\SummaryModule;
+use OptiGrid\MCManagerServer\Updates\GitHubPluginUpdater;
+use OptiGrid\MCManagerServer\Updates\GitHubUpdateSettings;
+use OptiGrid\MCManagerServer\Updates\GitHubUpdateAdminPage;
 
 final class Plugin
 {
@@ -54,6 +57,18 @@ final class Plugin
         $dashboard = new Dashboard($moduleManager, $assetManager);
 
         $dashboard->registerHooks();
+
+        $githubUpdateSettings = new GitHubUpdateSettings();
+        $githubUpdater = new GitHubPluginUpdater(
+            $githubUpdateSettings
+        );
+        $githubUpdater->registerHooks();
+
+        $githubUpdateAdminPage = new GitHubUpdateAdminPage(
+            $githubUpdateSettings,
+            $githubUpdater
+        );
+        $githubUpdateAdminPage->registerHooks();
 
         /**
          * Se dispara cuando el Dashboard Host está inicializado y los plugins

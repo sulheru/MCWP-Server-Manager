@@ -121,6 +121,16 @@ def user_rows():
                 a.gamemode,
                 a.is_blacklisted,
                 a.banned_until,
+                EXISTS (
+                    SELECT 1
+                    FROM wp_optigrid_entitlements e
+                    WHERE e.user_id = a.user_id
+                      AND e.entitlement_key = 'minecraft_access'
+                      AND e.status = 'active'
+                      AND e.starts_at <= NOW()
+                      AND (e.ends_at IS NULL OR e.ends_at > NOW())
+                      AND e.revoked_at IS NULL
+                ) AS entitlement_active,
                 u.user_login
             FROM wp_solidario_mc_access a
             JOIN wp_users u
@@ -249,7 +259,8 @@ def reconcile_user(row):
     temporarily_banned = future(row["banned_until"])
 
     banned = blacklisted or temporarily_banned
-    wanted_whitelist = active and not banned
+    entitlement_active = bool(row["entitlement_active"])
+    wanted_whitelist = active and entitlement_active and not banned
 
     banned_now = exists(f"/player/ban/exists/{name}")
     whitelist_now = exists(f"/whitelist/exists/{name}")
@@ -346,18 +357,33 @@ def reconcile_user(row):
     if mode not in ALLOWED_PLAYER_GAMEMODES:
         mode = "survival"
 
-    if active and not banned:
-        result = action(
-            "/player/gamemode",
-            {
-                "username": name,
-                "gamemode": mode,
-            },
-        ).get("result")
+    if wanted_whitelist:
+        try:
+            result = action(
+                "/player/gamemode",
+                {
+                    "username": name,
+                    "gamemode": mode,
+                },
+            ).get("result")
 
-        whitelist_messages.append(
-            f"gamemode: {result}"
-        )
+            whitelist_messages.append(
+                f"gamemode: {result}"
+            )
+
+        except Exception as gamemode_error:
+            whitelist_messages.append(
+                "gamemode_error: "
+                f"{clean_message(gamemode_error)}"
+            )
+
+            log(
+                f"user_id={uid} "
+                f"mc={name} "
+                "component=gamemode "
+                "noncritical=1 "
+                f"error={clean_message(gamemode_error)}"
+            )
 
     update_user_telemetry(
         uid,
@@ -371,6 +397,7 @@ def reconcile_user(row):
         f"user_id={uid} "
         f"wp={row['user_login']} "
         f"mc={name} "
+        f"entitlement={int(entitlement_active)} "
         f"blacklist={int(blacklisted)} "
         f"temporary={int(temporarily_banned)} "
         f"active={int(active)} "

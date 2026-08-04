@@ -69,7 +69,7 @@ final class OptiGrid_Subscriptions_Public_Checkout_Controller
 
         $user_id = get_current_user_id();
         $order = $this->requested_order($user_id);
-        $plans = $this->plans->active();
+        $plans = $this->plans->public_active();
         $sandbox_enabled = $this->gateways->is_enabled('sandbox');
         $checkout_error = isset($_GET['optigrid_checkout_error'])
             ? sanitize_text_field(rawurldecode(wp_unslash($_GET['optigrid_checkout_error'])))

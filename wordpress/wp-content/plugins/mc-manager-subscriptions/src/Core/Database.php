@@ -61,12 +61,14 @@ final class OptiGrid_Subscriptions_Database
             currency char(3) NOT NULL DEFAULT 'EUR',
             duration_days int(10) unsigned NOT NULL,
             is_active tinyint(1) NOT NULL DEFAULT 1,
+            is_visible tinyint(1) NOT NULL DEFAULT 1,
             sort_order int(11) NOT NULL DEFAULT 0,
             created_at datetime NOT NULL,
             updated_at datetime NOT NULL,
             PRIMARY KEY  (id),
             UNIQUE KEY code (code),
-            KEY active_sort (is_active, sort_order)
+            KEY active_sort (is_active, sort_order),
+            KEY public_sort (is_active, is_visible, sort_order)
         ) {$charset_collate};";
 
         /*

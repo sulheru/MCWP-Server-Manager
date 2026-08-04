@@ -31,10 +31,11 @@ final class OptiGrid_Subscriptions_Plan_Repository
             'currency' => 'EUR',
             'duration_days' => 30,
             'is_active' => 1,
+            'is_visible' => 1,
             'sort_order' => 0,
             'created_at' => $now,
             'updated_at' => $now,
-        ], ['%s','%s','%s','%s','%s','%d','%d','%d','%s','%s']);
+        ], ['%s','%s','%s','%s','%s','%d','%d','%d','%d','%s','%s']);
         if ($ok === false) { throw new RuntimeException('No se pudo crear el plan Sandbox: ' . $wpdb->last_error); }
         return (int) $wpdb->insert_id;
     }
@@ -50,6 +51,19 @@ final class OptiGrid_Subscriptions_Plan_Repository
     {
         global $wpdb;
         $rows = $wpdb->get_results("SELECT * FROM {$this->table} WHERE is_active = 1 ORDER BY sort_order ASC, id ASC", ARRAY_A);
+        return is_array($rows) ? $rows : [];
+    }
+
+    public function public_active(): array
+    {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT * FROM {$this->table}
+             WHERE is_active = 1
+               AND is_visible = 1
+             ORDER BY sort_order ASC, id ASC",
+            ARRAY_A
+        );
         return is_array($rows) ? $rows : [];
     }
 }

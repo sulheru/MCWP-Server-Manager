@@ -110,13 +110,26 @@ final class OptiGrid_Subscriptions_Checkout_Service
             (string) $order['gateway']
         );
 
-        return $gateway->create_checkout([
+        $result=$gateway->create_checkout([
             'order' => $order,
             'plan' => $plan,
             'user' => get_userdata(
                 (int) $order['user_id']
             ),
         ]);
+
+        $reference=sanitize_text_field(
+            (string)($result['external_operation_id'] ?? '')
+        );
+
+        if($reference!=='' && empty($order['gateway_reference'])){
+            $this->orders->set_gateway_reference(
+                (int)$order['id'],
+                $reference
+            );
+        }
+
+        return $result;
     }
 
     public function process_order(

@@ -15,6 +15,8 @@ final class OptiGrid_Subscriptions_Plugin
     private OptiGrid_Subscriptions_Sandbox_Portal_Controller $sandbox_portal_controller;
     private OptiGrid_Subscriptions_Sandbox_Payments_Controller $sandbox_payments_controller;
     private OptiGrid_Subscriptions_PayPal_Return_Controller $paypal_return_controller;
+    private OptiGrid_Subscriptions_PayPal_Webhook_Controller $paypal_webhook_controller;
+    private OptiGrid_Subscriptions_PayPal_Reconciler $paypal_reconciler;
 
     public function __construct()
     {
@@ -135,6 +137,20 @@ final class OptiGrid_Subscriptions_Plugin
                 $checkout,
                 $paypal
             );
+
+        $this->paypal_webhook_controller =
+            new OptiGrid_Subscriptions_PayPal_Webhook_Controller(
+                $orders,
+                $checkout,
+                $paypal
+            );
+
+        $this->paypal_reconciler =
+            new OptiGrid_Subscriptions_PayPal_Reconciler(
+                $orders,
+                $checkout,
+                $paypal
+            );
     }
 
     public function run(): void
@@ -154,6 +170,8 @@ final class OptiGrid_Subscriptions_Plugin
         $this->sandbox_portal_controller->register();
         $this->sandbox_payments_controller->register();
         $this->paypal_return_controller->register();
+        $this->paypal_webhook_controller->register();
+        $this->paypal_reconciler->register();
 
         do_action(
             'optigrid_subscriptions_gateways_ready',

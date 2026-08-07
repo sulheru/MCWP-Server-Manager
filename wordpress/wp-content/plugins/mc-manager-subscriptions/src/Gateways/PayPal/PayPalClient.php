@@ -121,6 +121,25 @@ final class OptiGrid_Subscriptions_PayPal_Client
         );
     }
 
+    public function verify_webhook_signature(array $headers,array $event,string $webhook_id): bool
+    {
+        foreach(['transmission_id','transmission_time','cert_url','auth_algo','transmission_sig'] as $key){
+            if(trim((string)($headers[$key] ?? ''))===''){return false;}
+        }
+        $webhook_id=trim($webhook_id);
+        if($webhook_id===''){return false;}
+        $response=$this->request('POST','/v1/notifications/verify-webhook-signature',[
+            'transmission_id'=>$headers['transmission_id'],
+            'transmission_time'=>$headers['transmission_time'],
+            'cert_url'=>$headers['cert_url'],
+            'auth_algo'=>$headers['auth_algo'],
+            'transmission_sig'=>$headers['transmission_sig'],
+            'webhook_id'=>$webhook_id,
+            'webhook_event'=>$event,
+        ]);
+        return strtoupper((string)($response['verification_status'] ?? ''))==='SUCCESS';
+    }
+
     private function access_token(): string
     {
         if (!$this->configured()) {

@@ -89,8 +89,14 @@ final class OptiGrid_Subscriptions_Gateway_Settings
                 'environment' => 'sandbox',
                 'client_id' => '',
                 'client_secret' => '',
+                'webhook_id' => '',
             ];
             $changed = true;
+        }
+
+        if(isset($all['paypal']) && is_array($all['paypal']) && !array_key_exists('webhook_id',$all['paypal'])){
+            $all['paypal']['webhook_id']='';
+            $changed=true;
         }
 
         if ($changed) {

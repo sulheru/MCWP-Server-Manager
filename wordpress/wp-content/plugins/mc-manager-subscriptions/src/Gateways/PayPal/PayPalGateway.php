@@ -255,6 +255,85 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
         ];
     }
 
+    public function public_id_from_webhook(array $event): string
+    {
+        $resource=is_array($event['resource'] ?? null)?$event['resource']:[];
+        $direct=$this->public_id_from_resource($resource);
+        if($direct!==''){return $direct;}
+        $related=$resource['supplementary_data']['related_ids'] ?? [];
+        $paypal_order_id=is_array($related)?sanitize_text_field((string)($related['order_id'] ?? '')):'';
+        if($paypal_order_id===''){return '';}
+        return $this->public_id_from_resource($this->client()->get_order($paypal_order_id));
+    }
+
+    public function result_from_capture_webhook(array $order,array $event): ?array
+    {
+        $type=strtoupper((string)($event['event_type'] ?? ''));
+        $status=match($type){
+            'PAYMENT.CAPTURE.COMPLETED'=>'approved',
+            'PAYMENT.CAPTURE.DENIED'=>'rejected',
+            default=>null,
+        };
+        if($status===null){return null;}
+        $resource=is_array($event['resource'] ?? null)?$event['resource']:[];
+        $external_id=sanitize_text_field((string)($resource['id'] ?? ''));
+        if($external_id===''){throw new RuntimeException('Webhook PayPal sin capture id.');}
+        $amount=is_array($resource['amount'] ?? null)?$resource['amount']:[];
+        $value=number_format((float)($amount['value'] ?? -1),2,'.','');
+        $currency=strtoupper((string)($amount['currency_code'] ?? ''));
+        if($value!==number_format((float)$order['amount'],2,'.','') || $currency!==strtoupper((string)$order['currency'])){
+            throw new RuntimeException('El importe del webhook PayPal no coincide con la orden local.');
+        }
+        return [
+            'gateway'=>'paypal','external_operation_id'=>$external_id,'scenario'=>'paypal_webhook','status'=>$status,
+            'amount'=>$value,'currency'=>$currency,'message'=>'PayPal webhook: '.$type,
+            'processed_at'=>current_time('mysql',true),'raw'=>$event,
+        ];
+    }
+
+    public function reconcile(array $order): ?array
+    {
+        $paypal_order_id=sanitize_text_field((string)($order['gateway_reference'] ?? ''));
+        if($paypal_order_id===''){return null;}
+        $remote=$this->client()->get_order($paypal_order_id);
+        $this->validate_remote_order($order,$remote);
+        $status=strtoupper((string)($remote['status'] ?? ''));
+        if($status==='APPROVED'){return $this->capture($order,$paypal_order_id);}
+        if($status!=='COMPLETED'){return null;}
+        $capture=$this->first_capture($remote);
+        if($capture===[]){return null;}
+        return $this->result_from_capture_resource($order,$capture,['source'=>'paypal_reconcile','order'=>$remote],'paypal_reconcile');
+    }
+
+    private function public_id_from_resource(array $resource): string
+    {
+        $direct=sanitize_text_field((string)($resource['custom_id'] ?? ''));
+        if($direct!==''){return $direct;}
+        $units=$resource['purchase_units'] ?? [];
+        if(!is_array($units)){return '';}
+        foreach($units as $unit){
+            if(!is_array($unit)){continue;}
+            $value=sanitize_text_field((string)($unit['custom_id'] ?? $unit['reference_id'] ?? ''));
+            if($value!==''){return $value;}
+        }
+        return '';
+    }
+
+    private function result_from_capture_resource(array $order,array $capture,array $raw,string $scenario): array
+    {
+        $external_id=sanitize_text_field((string)($capture['id'] ?? ''));
+        if($external_id===''){throw new RuntimeException('PayPal no devolvió capture id.');}
+        $status=strtoupper((string)($capture['status'] ?? ''));
+        $normalized=match($status){'COMPLETED'=>'approved','PENDING'=>'pending','DECLINED','FAILED','DENIED'=>'rejected',default=>'error'};
+        $amount=is_array($capture['amount'] ?? null)?$capture['amount']:[];
+        return [
+            'gateway'=>'paypal','external_operation_id'=>$external_id,'scenario'=>$scenario,'status'=>$normalized,
+            'amount'=>(string)($amount['value'] ?? $order['amount']),
+            'currency'=>strtoupper((string)($amount['currency_code'] ?? $order['currency'])),
+            'message'=>'PayPal '.$scenario.': '.$status,'processed_at'=>current_time('mysql',true),'raw'=>$raw,
+        ];
+    }
+
     private function client(): OptiGrid_Subscriptions_PayPal_Client
     {
         $settings =

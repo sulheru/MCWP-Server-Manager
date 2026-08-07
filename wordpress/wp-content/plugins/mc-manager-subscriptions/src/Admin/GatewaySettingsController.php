@@ -120,9 +120,16 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
                     (string) ($current['client_secret'] ?? '');
             }
 
+            $webhook_id = isset($_POST['webhook_id'])
+                ? sanitize_text_field(wp_unslash($_POST['webhook_id']))
+                : '';
+
             $settings['environment'] = 'sandbox';
             $settings['client_id'] = $client_id;
             $settings['client_secret'] = $client_secret;
+            $settings['webhook_id'] = $webhook_id !== ''
+                ? $webhook_id
+                : (string) ($current['webhook_id'] ?? '');
         }
 
         OptiGrid_Subscriptions_Gateway_Settings::save_gateway(

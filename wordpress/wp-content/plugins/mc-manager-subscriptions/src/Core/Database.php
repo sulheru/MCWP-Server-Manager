@@ -105,6 +105,7 @@ final class OptiGrid_Subscriptions_Database
             plan_id bigint(20) unsigned NOT NULL,
             subscription_id bigint(20) unsigned NULL,
             gateway varchar(50) NOT NULL DEFAULT 'sandbox',
+            gateway_reference varchar(191) NULL,
             status varchar(32) NOT NULL DEFAULT 'pending',
             amount decimal(12,2) NOT NULL,
             currency char(3) NOT NULL DEFAULT 'EUR',
@@ -117,7 +118,8 @@ final class OptiGrid_Subscriptions_Database
             UNIQUE KEY idempotency_key (idempotency_key),
             KEY user_status (user_id, status),
             KEY subscription_id (subscription_id),
-            KEY gateway_status (gateway, status)
+            KEY gateway_status (gateway, status),
+            KEY gateway_reference (gateway, gateway_reference)
         ) {$charset_collate};";
 
         /*

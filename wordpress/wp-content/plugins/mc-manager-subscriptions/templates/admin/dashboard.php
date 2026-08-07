@@ -417,6 +417,18 @@ $gateway_update = isset($_GET['gateway_updated'])
                                 >
                             </p>
 
+                            <p>
+                                <label for="paypal-webhook-url"><strong>Webhook URL</strong></label><br>
+                                <input id="paypal-webhook-url" type="text" class="large-text code" readonly
+                                    value="<?php echo esc_attr(OptiGrid_Subscriptions_PayPal_Webhook_Controller::endpoint_url()); ?>">
+                            </p>
+
+                            <p>
+                                <label for="paypal-webhook-id"><strong>Webhook ID Sandbox</strong></label><br>
+                                <input id="paypal-webhook-id" name="webhook_id" type="text" class="regular-text" autocomplete="off"
+                                    value="<?php echo esc_attr((string)($paypal_settings['webhook_id'] ?? '')); ?>">
+                            </p>
+
                             <p class="description">
                                 <?php
                                 echo esc_html__(

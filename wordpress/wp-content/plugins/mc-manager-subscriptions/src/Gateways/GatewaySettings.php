@@ -62,21 +62,43 @@ final class OptiGrid_Subscriptions_Gateway_Settings
     }
 
     /**
-     * Crea la configuración inicial sin activar ninguna pasarela.
+     * Asegura defaults sin sobrescribir configuración existente.
      */
     public static function ensure_defaults(): void
     {
         $all = self::all();
+        $changed = false;
 
-        if (isset($all['sandbox']) && is_array($all['sandbox'])) {
-            return;
+        if (
+            !isset($all['sandbox'])
+            || !is_array($all['sandbox'])
+        ) {
+            $all['sandbox'] = [
+                'enabled' => false,
+                'default_scenario' => 'approved',
+            ];
+            $changed = true;
         }
 
-        $all['sandbox'] = [
-            'enabled'          => false,
-            'default_scenario' => 'approved',
-        ];
+        if (
+            !isset($all['paypal'])
+            || !is_array($all['paypal'])
+        ) {
+            $all['paypal'] = [
+                'enabled' => false,
+                'environment' => 'sandbox',
+                'client_id' => '',
+                'client_secret' => '',
+            ];
+            $changed = true;
+        }
 
-        add_option(self::OPTION_NAME, $all, '', false);
+        if ($changed) {
+            update_option(
+                self::OPTION_NAME,
+                $all,
+                false
+            );
+        }
     }
 }

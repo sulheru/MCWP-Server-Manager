@@ -56,42 +56,92 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
         }
 
         $enabled = isset($_POST['enabled']);
-
-        $default_scenario = isset($_POST['default_scenario'])
-            ? sanitize_key(wp_unslash($_POST['default_scenario']))
-            : 'approved';
-
-        $allowed_scenarios = [
-            'approved',
-            'rejected',
-            'pending',
-            'cancelled',
-            'technical_error',
+        $settings = [
+            'enabled' => $enabled,
         ];
 
-        if (!in_array($default_scenario, $allowed_scenarios, true)) {
-            $default_scenario = 'approved';
+        if ($gateway_id === 'sandbox') {
+            $default_scenario =
+                isset($_POST['default_scenario'])
+                    ? sanitize_key(
+                        wp_unslash($_POST['default_scenario'])
+                    )
+                    : 'approved';
+
+            $allowed_scenarios = [
+                'approved',
+                'rejected',
+                'pending',
+                'cancelled',
+                'technical_error',
+            ];
+
+            if (
+                !in_array(
+                    $default_scenario,
+                    $allowed_scenarios,
+                    true
+                )
+            ) {
+                $default_scenario = 'approved';
+            }
+
+            $settings['default_scenario'] =
+                $default_scenario;
+        }
+
+        if ($gateway_id === 'paypal') {
+            $current =
+                OptiGrid_Subscriptions_Gateway_Settings::for_gateway(
+                    'paypal'
+                );
+
+            $client_id =
+                isset($_POST['client_id'])
+                    ? sanitize_text_field(
+                        wp_unslash($_POST['client_id'])
+                    )
+                    : '';
+
+            $client_secret =
+                isset($_POST['client_secret'])
+                    ? sanitize_text_field(
+                        wp_unslash($_POST['client_secret'])
+                    )
+                    : '';
+
+            if ($client_id === '') {
+                $client_id =
+                    (string) ($current['client_id'] ?? '');
+            }
+
+            if ($client_secret === '') {
+                $client_secret =
+                    (string) ($current['client_secret'] ?? '');
+            }
+
+            $settings['environment'] = 'sandbox';
+            $settings['client_id'] = $client_id;
+            $settings['client_secret'] = $client_secret;
         }
 
         OptiGrid_Subscriptions_Gateway_Settings::save_gateway(
             $gateway_id,
-            [
-                'enabled'          => $enabled,
-                'default_scenario' => $default_scenario,
-            ]
+            $settings
         );
 
-        /**
-         * Permite reaccionar a cambios de configuración sin acoplar
-         * el núcleo a una pasarela concreta.
-         */
+        $hook_settings = $settings;
+
+        if (isset($hook_settings['client_secret'])) {
+            unset($hook_settings['client_secret']);
+            $hook_settings['client_secret_configured'] =
+                ($settings['client_secret'] ?? '') !== '';
+        }
+
         do_action(
             'optigrid_subscriptions_gateway_settings_saved',
             $gateway_id,
-            [
-                'enabled'          => $enabled,
-                'default_scenario' => $default_scenario,
-            ]
+            $hook_settings
         );
 
         $this->redirect('saved');
@@ -101,8 +151,8 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
     {
         $url = add_query_arg(
             [
-                'page'             => 'optigrid-subscriptions',
-                'gateway_updated'  => sanitize_key($status),
+                'page' => 'optigrid-subscriptions',
+                'gateway_updated' => sanitize_key($status),
             ],
             admin_url('admin.php')
         );

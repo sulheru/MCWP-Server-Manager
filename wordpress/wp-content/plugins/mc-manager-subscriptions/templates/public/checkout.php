@@ -27,7 +27,7 @@ declare(strict_types=1); if (!defined('ABSPATH')) { exit; }
 </article>
 <?php endforeach; ?>
 </div>
-<div class="optigrid-public-notice optigrid-public-notice--warning"><p><strong><?php echo esc_html__('Entorno de pruebas:','optigrid-subscriptions'); ?></strong> <?php echo esc_html__('Sandbox no procesa dinero real, pero reproduce el ciclo completo de una pasarela.','optigrid-subscriptions'); ?></p></div>
+<div class="optigrid-public-notice optigrid-public-notice--warning"><p><strong><?php echo esc_html__('Entorno de pruebas:','optigrid-subscriptions'); ?></strong> <?php echo esc_html__('Las pasarelas marcadas como entorno de pruebas no procesan dinero real.','optigrid-subscriptions'); ?></p></div>
 <?php endif; ?>
 
 <div class="optigrid-modal" data-gateway-modal hidden aria-hidden="true">
@@ -39,6 +39,15 @@ declare(strict_types=1); if (!defined('ABSPATH')) { exit; }
 <div class="optigrid-gateway-list">
 <?php foreach ($gateways as $gateway) : ?>
 <button type="button" class="optigrid-gateway-option" data-gateway="<?php echo esc_attr($gateway->get_id()); ?>">
+<?php if ($gateway->get_id() === 'paypal') : ?>
+<img
+    class="optigrid-gateway-option__logo"
+    src="<?php echo esc_url(OPTIGRID_SUBSCRIPTIONS_URL . 'assets/images/gateways/paypal-mark.jpg'); ?>"
+    alt=""
+    width="37"
+    height="23"
+>
+<?php endif; ?>
 <strong><?php echo esc_html($gateway->get_name()); ?></strong>
 <span><?php echo esc_html($gateway->get_description()); ?></span>
 </button>

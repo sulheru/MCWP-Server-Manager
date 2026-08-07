@@ -363,6 +363,70 @@ $gateway_update = isset($_GET['gateway_updated'])
                             </select>
                         <?php endif; ?>
 
+                        <?php if ($gateway_id === 'paypal') : ?>
+                            <?php
+                            $paypal_settings =
+                                OptiGrid_Subscriptions_Gateway_Settings::for_gateway(
+                                    'paypal'
+                                );
+                            ?>
+                            <p>
+                                <strong>
+                                    <?php
+                                    echo esc_html__(
+                                        'Entorno',
+                                        'optigrid-subscriptions'
+                                    );
+                                    ?>:
+                                </strong>
+                                Sandbox
+                            </p>
+
+                            <p>
+                                <label for="paypal-client-id">
+                                    <strong>Client ID Sandbox</strong>
+                                </label>
+                                <br>
+                                <input
+                                    id="paypal-client-id"
+                                    name="client_id"
+                                    type="text"
+                                    class="regular-text"
+                                    autocomplete="off"
+                                    value="<?php echo esc_attr((string) ($paypal_settings['client_id'] ?? '')); ?>"
+                                >
+                            </p>
+
+                            <p>
+                                <label for="paypal-client-secret">
+                                    <strong>Client Secret Sandbox</strong>
+                                </label>
+                                <br>
+                                <input
+                                    id="paypal-client-secret"
+                                    name="client_secret"
+                                    type="password"
+                                    class="regular-text"
+                                    autocomplete="new-password"
+                                    value=""
+                                    placeholder="<?php echo esc_attr(
+                                        !empty($paypal_settings['client_secret'])
+                                            ? 'Configurado — dejar vacío para conservar'
+                                            : 'Introduce el Client Secret'
+                                    ); ?>"
+                                >
+                            </p>
+
+                            <p class="description">
+                                <?php
+                                echo esc_html__(
+                                    'S3.1 utiliza exclusivamente PayPal Sandbox. El secreto no se muestra de nuevo ni debe incluirse en Git.',
+                                    'optigrid-subscriptions'
+                                );
+                                ?>
+                            </p>
+                        <?php endif; ?>
+
                         <p>
                             <button
                                 type="submit"

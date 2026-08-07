@@ -73,6 +73,40 @@ final class OptiGrid_Subscriptions_Sandbox_Gateway implements
      * @param array<string,mixed> $context
      * @return array<string,mixed>
      */
+    public function create_checkout(array $context): array
+    {
+        $order = $context['order'] ?? null;
+
+        if (!is_array($order)) {
+            throw new InvalidArgumentException(
+                'Sandbox requiere una orden válida.'
+            );
+        }
+
+        $public_id = sanitize_text_field(
+            (string) ($order['public_id'] ?? '')
+        );
+
+        if ($public_id === '') {
+            throw new InvalidArgumentException(
+                'Sandbox requiere un public_id válido.'
+            );
+        }
+
+        return [
+            'gateway'      => $this->get_id(),
+            'status'       => 'pending',
+            'redirect_url' =>
+                OptiGrid_Subscriptions_Sandbox_Portal_Controller::portal_url(
+                    $public_id
+                ),
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     * @return array<string,mixed>
+     */
     public function create_payment(array $context): array
     {
         $scenario = isset($context['scenario'])

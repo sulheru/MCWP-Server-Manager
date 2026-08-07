@@ -30,6 +30,39 @@ final class OptiGrid_Subscriptions_Payment_Order_Repository
         return is_array($row)?$row:null;
     }
 
+    public function find_by_public_id(string $public_id): ?array
+    {
+        global $wpdb;
+        $row=$wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->table} WHERE public_id=%s LIMIT 1",
+            sanitize_text_field($public_id)
+        ), ARRAY_A);
+        return is_array($row)?$row:null;
+    }
+
+    public function sandbox_orders(string $status='pending', int $limit=100): array
+    {
+        global $wpdb;
+        $plans=OptiGrid_Subscriptions_Database::tables()['plans'];
+        $status=sanitize_key($status);
+        $limit=max(1,min(500,$limit));
+        $where="o.gateway='sandbox'";
+        $args=[];
+        if ($status !== 'all') {
+            $where.=" AND o.status=%s";
+            $args[]=$status;
+        }
+        $sql="SELECT o.*, p.name AS plan_name, u.user_login, u.user_email
+              FROM {$this->table} o
+              LEFT JOIN {$plans} p ON p.id=o.plan_id
+              LEFT JOIN {$wpdb->users} u ON u.ID=o.user_id
+              WHERE {$where}
+              ORDER BY o.id DESC LIMIT %d";
+        $args[]=$limit;
+        $rows=$wpdb->get_results($wpdb->prepare($sql,...$args),ARRAY_A);
+        return is_array($rows)?$rows:[];
+    }
+
     public function recent_for_user(int $user_id, int $limit=10): array
     {
         global $wpdb;

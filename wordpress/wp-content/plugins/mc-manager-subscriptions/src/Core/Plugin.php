@@ -12,6 +12,8 @@ final class OptiGrid_Subscriptions_Plugin
     private OptiGrid_Subscriptions_Public_Checkout_Controller $public_checkout_controller;
     private OptiGrid_Subscriptions_Subscription_Manager_Controller $subscription_manager_controller;
     private OptiGrid_Subscriptions_Plan_Manager_Controller $plan_manager_controller;
+    private OptiGrid_Subscriptions_Sandbox_Portal_Controller $sandbox_portal_controller;
+    private OptiGrid_Subscriptions_Sandbox_Payments_Controller $sandbox_payments_controller;
 
     public function __construct()
     {
@@ -38,6 +40,8 @@ final class OptiGrid_Subscriptions_Plugin
         $subscription_admin_service=new OptiGrid_Subscriptions_Subscription_Admin_Service();
         $this->subscription_manager_controller=new OptiGrid_Subscriptions_Subscription_Manager_Controller($subscription_admin_repository,$subscription_admin_service);
         $this->plan_manager_controller=new OptiGrid_Subscriptions_Plan_Manager_Controller(new OptiGrid_Subscriptions_Plan_Admin_Repository());
+        $this->sandbox_portal_controller=new OptiGrid_Subscriptions_Sandbox_Portal_Controller($orders,$plans,$checkout);
+        $this->sandbox_payments_controller=new OptiGrid_Subscriptions_Sandbox_Payments_Controller($orders,$checkout);
     }
 
     public function run(): void
@@ -49,6 +53,8 @@ final class OptiGrid_Subscriptions_Plugin
         $this->public_checkout_controller->register();
         $this->subscription_manager_controller->register();
         $this->plan_manager_controller->register();
+        $this->sandbox_portal_controller->register();
+        $this->sandbox_payments_controller->register();
         do_action('optigrid_subscriptions_gateways_ready',$this->gateway_registry);
     }
 }

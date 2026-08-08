@@ -126,3 +126,8 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* S3.3.1 — PayPal: mostrar solo el entorno seleccionado */
+.optigrid-paypal-environment[hidden] {
+    display: none !important;
+}

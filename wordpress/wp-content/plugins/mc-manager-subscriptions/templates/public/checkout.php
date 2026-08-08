@@ -23,7 +23,7 @@ declare(strict_types=1); if (!defined('ABSPATH')) { exit; }
 <?php if (!empty($plan['description'])) : ?><p><?php echo esc_html((string)$plan['description']); ?></p><?php endif; ?>
 <p class="optigrid-plan-card__price"><strong><?php echo esc_html(number_format_i18n((float)$plan['price'],2).' '.strtoupper((string)$plan['currency'])); ?></strong></p>
 <p><?php printf(esc_html__('Acceso durante %d días.','optigrid-subscriptions'),(int)$plan['duration_days']); ?></p>
-<button type="button" class="button button-primary" data-select-plan data-plan-id="<?php echo esc_attr((string)$plan['id']); ?>" data-plan-name="<?php echo esc_attr((string)$plan['name']); ?>" data-idempotency="<?php echo esc_attr(sprintf('public:%d:%d:%s',get_current_user_id(),(int)$plan['id'],wp_generate_uuid4())); ?>"><?php echo esc_html__('Suscribirme','optigrid-subscriptions'); ?></button>
+<button type="button" class="optigrid-public-action" data-select-plan data-plan-id="<?php echo esc_attr((string)$plan['id']); ?>" data-plan-name="<?php echo esc_attr((string)$plan['name']); ?>" data-idempotency="<?php echo esc_attr(sprintf('public:%d:%d:%s',get_current_user_id(),(int)$plan['id'],wp_generate_uuid4())); ?>"><?php echo esc_html__('Suscribirme','optigrid-subscriptions'); ?></button>
 </article>
 <?php endforeach; ?>
 </div>

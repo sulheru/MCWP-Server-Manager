@@ -43,10 +43,8 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
                 'live'=>$this->paypal_env_from_post('live',is_array($current['live']??null)?$current['live']:[]),
             ];
 
-            if($environment==='live'&&!$this->complete($settings['live'])){
-                $settings['environment']='sandbox';
-                OptiGrid_Subscriptions_Gateway_Settings::save_gateway('paypal',$settings);
-                $this->redirect('paypal_live_incomplete');
+            if(!$this->complete($settings[$environment])){
+                $this->redirect('paypal_environment_incomplete');
             }
         }
 

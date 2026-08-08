@@ -131,3 +131,61 @@
 .optigrid-paypal-environment[hidden] {
     display: none !important;
 }
+
+/* S3.4.1 — Gateways en pestañas */
+.optigrid-gateway-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 18px 0 0;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.optigrid-gateway-tab {
+    margin: 0 0 -1px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-bottom: 1px solid #c3c4c7;
+    background: transparent;
+    color: #2c3338;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.optigrid-gateway-tab:hover,
+.optigrid-gateway-tab:focus-visible {
+    color: #135e96;
+    background: #f0f0f1;
+}
+
+.optigrid-gateway-tab.is-active {
+    border-color: #c3c4c7;
+    border-bottom-color: #fff;
+    background: #fff;
+    color: #1d2327;
+}
+
+.optigrid-gateway-panels {
+    margin-top: 0;
+}
+
+.optigrid-gateway-panel {
+    margin-top: 0;
+    border-top-left-radius: 0;
+}
+
+.optigrid-gateway-panel[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .optigrid-gateway-tabs {
+        gap: 0;
+    }
+
+    .optigrid-gateway-tab {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+}

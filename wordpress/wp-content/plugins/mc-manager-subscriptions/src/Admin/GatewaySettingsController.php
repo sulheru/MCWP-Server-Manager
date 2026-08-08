@@ -21,7 +21,7 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
         if(!current_user_can('manage_options')){wp_die('Permisos insuficientes.');}
         check_admin_referer(self::NONCE_ACTION,self::NONCE_NAME);
         $gateway_id=isset($_POST['gateway_id'])?sanitize_key(wp_unslash($_POST['gateway_id'])):'';
-        if(!$this->registry->has($gateway_id)){$this->redirect('unknown_gateway');}
+        if(!$this->registry->has($gateway_id)){$this->redirect('unknown_gateway',$gateway_id);}
 
         $settings=['enabled'=>isset($_POST['enabled'])];
 
@@ -44,7 +44,7 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
             ];
 
             if(!$this->complete($settings[$environment])){
-                $this->redirect('paypal_environment_incomplete');
+                $this->redirect('paypal_environment_incomplete',$gateway_id);
             }
         }
 
@@ -58,7 +58,7 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
             }
         }
         do_action('optigrid_subscriptions_gateway_settings_saved',$gateway_id,$safe);
-        $this->redirect('saved');
+        $this->redirect('saved',$gateway_id);
     }
 
     private function paypal_env_from_post(string $env,array $current): array
@@ -79,9 +79,28 @@ final class OptiGrid_Subscriptions_Gateway_Settings_Controller
         return trim((string)($s['client_id']??''))!=='' && trim((string)($s['client_secret']??''))!=='' && trim((string)($s['webhook_id']??''))!=='';
     }
 
-    private function redirect(string $status): void
-    {
-        wp_safe_redirect(add_query_arg(['page'=>'optigrid-subscriptions','gateway_updated'=>sanitize_key($status)],admin_url('admin.php')));
+    private function redirect(
+        string $status,
+        string $gateway_id = ''
+    ): void {
+        $args = [
+            'page' => 'optigrid-subscriptions',
+            'gateway_updated' => sanitize_key($status),
+        ];
+
+        $gateway_id = sanitize_key($gateway_id);
+
+        if ($gateway_id !== '') {
+            $args['gateway'] = $gateway_id;
+        }
+
+        wp_safe_redirect(
+            add_query_arg(
+                $args,
+                admin_url('admin.php')
+            )
+        );
+
         exit;
     }
 

@@ -13,6 +13,25 @@ $enabled_gateways = $gateway_registry->enabled();
 $gateway_update = isset($_GET['gateway_updated'])
     ? sanitize_key(wp_unslash($_GET['gateway_updated']))
     : '';
+
+$requested_gateway = isset($_GET['gateway'])
+    ? sanitize_key(wp_unslash($_GET['gateway']))
+    : '';
+
+$gateway_ids = array_map(
+    static fn (
+        OptiGrid_Subscriptions_Payment_Gateway_Interface $gateway
+    ): string => sanitize_key($gateway->get_id()),
+    $gateways
+);
+
+$active_gateway = in_array(
+    $requested_gateway,
+    $gateway_ids,
+    true
+)
+    ? $requested_gateway
+    : ($gateway_ids[0] ?? '');
 ?>
 
 <div class="wrap optigrid-subscriptions">
@@ -210,12 +229,48 @@ $gateway_update = isset($_GET['gateway_updated'])
                 ?>
             </p>
 
-            <?php foreach ($gateways as $gateway) : ?>
-                <?php
-                $status = $gateway->get_status();
-                $gateway_id = $gateway->get_id();
-                ?>
-                <article class="optigrid-gateway">
+            <?php if (!empty($gateways)) : ?>
+                <div
+                    class="optigrid-gateway-tabs"
+                    role="tablist"
+                    aria-label="<?php echo esc_attr__('Extensiones de pago', 'optigrid-subscriptions'); ?>"
+                    data-gateway-tabs
+                >
+                    <?php foreach ($gateways as $gateway) : ?>
+                        <?php
+                        $tab_gateway_id = sanitize_key($gateway->get_id());
+                        $tab_active = $tab_gateway_id === $active_gateway;
+                        ?>
+                        <button
+                            type="button"
+                            class="optigrid-gateway-tab<?php echo $tab_active ? ' is-active' : ''; ?>"
+                            role="tab"
+                            id="optigrid-gateway-tab-<?php echo esc_attr($tab_gateway_id); ?>"
+                            aria-selected="<?php echo $tab_active ? 'true' : 'false'; ?>"
+                            aria-controls="optigrid-gateway-panel-<?php echo esc_attr($tab_gateway_id); ?>"
+                            tabindex="<?php echo $tab_active ? '0' : '-1'; ?>"
+                            data-gateway-tab="<?php echo esc_attr($tab_gateway_id); ?>"
+                        >
+                            <?php echo esc_html($gateway->get_name()); ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="optigrid-gateway-panels">
+                    <?php foreach ($gateways as $gateway) : ?>
+                        <?php
+                        $status = $gateway->get_status();
+                        $gateway_id = sanitize_key($gateway->get_id());
+                        $panel_active = $gateway_id === $active_gateway;
+                        ?>
+                        <article
+                            class="optigrid-gateway optigrid-gateway-panel<?php echo $panel_active ? ' is-active' : ''; ?>"
+                            role="tabpanel"
+                            id="optigrid-gateway-panel-<?php echo esc_attr($gateway_id); ?>"
+                            aria-labelledby="optigrid-gateway-tab-<?php echo esc_attr($gateway_id); ?>"
+                            <?php echo $panel_active ? '' : 'hidden'; ?>
+                            data-gateway-panel="<?php echo esc_attr($gateway_id); ?>"
+                        >
                     <div class="optigrid-gateway__header">
                         <div>
                             <h3>
@@ -492,8 +547,19 @@ $gateway_update = isset($_GET['gateway_updated'])
                             </button>
                         </p>
                     </form>
-                </article>
-            <?php endforeach; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else : ?>
+                <p>
+                    <?php
+                    echo esc_html__(
+                        'No hay pasarelas de pago registradas.',
+                        'optigrid-subscriptions'
+                    );
+                    ?>
+                </p>
+            <?php endif; ?>
         </section>
     </div>
 

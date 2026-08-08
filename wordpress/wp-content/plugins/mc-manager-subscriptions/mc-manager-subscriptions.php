@@ -3,7 +3,7 @@
  * Plugin Name: OptiGrid Subscriptions
  * Plugin URI:  https://github.com/sulheru/MCWP-Server-Manager
  * Description: Gestión de planes, suscripciones, pagos y derechos de acceso para OptiGrid.
- * Version:     0.12.2
+ * Version:     0.12.3
  * Author:      OptiGrid
  * Text Domain: optigrid-subscriptions
  */
@@ -11,7 +11,7 @@
 declare(strict_types=1);
 if (!defined('ABSPATH')) { exit; }
 
-define('OPTIGRID_SUBSCRIPTIONS_VERSION', '0.12.2');
+define('OPTIGRID_SUBSCRIPTIONS_VERSION', '0.12.3');
 define('OPTIGRID_SUBSCRIPTIONS_DB_VERSION', '1.2.0');
 define('OPTIGRID_SUBSCRIPTIONS_FILE', __FILE__);
 define('OPTIGRID_SUBSCRIPTIONS_DIR', plugin_dir_path(__FILE__));

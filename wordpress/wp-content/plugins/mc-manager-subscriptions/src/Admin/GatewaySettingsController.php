@@ -1,185 +1,93 @@
 <?php
 
 declare(strict_types=1);
+if (!defined('ABSPATH')) { exit; }
 
-if (!defined('ABSPATH')) {
-    exit;
-}
-
-/**
- * Procesa la configuración de extensiones de pago.
- */
 final class OptiGrid_Subscriptions_Gateway_Settings_Controller
 {
-    private const ACTION = 'optigrid_subscriptions_save_gateways';
-    private const NONCE_ACTION = 'optigrid_subscriptions_gateways';
-    private const NONCE_NAME = 'optigrid_subscriptions_gateways_nonce';
+    private const ACTION='optigrid_subscriptions_save_gateways';
+    private const NONCE_ACTION='optigrid_subscriptions_gateways';
+    private const NONCE_NAME='optigrid_subscriptions_gateways_nonce';
 
-    private OptiGrid_Subscriptions_Gateway_Registry $registry;
-
-    public function __construct(
-        OptiGrid_Subscriptions_Gateway_Registry $registry
-    ) {
-        $this->registry = $registry;
-    }
+    public function __construct(private OptiGrid_Subscriptions_Gateway_Registry $registry) {}
 
     public function register(): void
     {
-        add_action(
-            'admin_post_' . self::ACTION,
-            [$this, 'handle_save']
-        );
+        add_action('admin_post_'.self::ACTION,[$this,'handle_save']);
     }
 
     public function handle_save(): void
     {
-        if (!current_user_can('manage_options')) {
-            wp_die(
-                esc_html__(
-                    'No tienes permisos suficientes para modificar las pasarelas.',
-                    'optigrid-subscriptions'
-                )
-            );
+        if(!current_user_can('manage_options')){wp_die('Permisos insuficientes.');}
+        check_admin_referer(self::NONCE_ACTION,self::NONCE_NAME);
+        $gateway_id=isset($_POST['gateway_id'])?sanitize_key(wp_unslash($_POST['gateway_id'])):'';
+        if(!$this->registry->has($gateway_id)){$this->redirect('unknown_gateway');}
+
+        $settings=['enabled'=>isset($_POST['enabled'])];
+
+        if($gateway_id==='sandbox'){
+            $scenario=isset($_POST['default_scenario'])?sanitize_key(wp_unslash($_POST['default_scenario'])):'approved';
+            $allowed=['approved','rejected','pending','cancelled','technical_error'];
+            $settings['default_scenario']=in_array($scenario,$allowed,true)?$scenario:'approved';
         }
 
-        check_admin_referer(
-            self::NONCE_ACTION,
-            self::NONCE_NAME
-        );
+        if($gateway_id==='paypal'){
+            $current=OptiGrid_Subscriptions_Gateway_Settings::for_gateway('paypal');
+            $environment=isset($_POST['environment'])?sanitize_key(wp_unslash($_POST['environment'])):'sandbox';
+            if(!in_array($environment,['sandbox','live'],true)){$environment='sandbox';}
 
-        $gateway_id = isset($_POST['gateway_id'])
-            ? sanitize_key(wp_unslash($_POST['gateway_id']))
-            : '';
-
-        if (!$this->registry->has($gateway_id)) {
-            $this->redirect('unknown_gateway');
-        }
-
-        $enabled = isset($_POST['enabled']);
-        $settings = [
-            'enabled' => $enabled,
-        ];
-
-        if ($gateway_id === 'sandbox') {
-            $default_scenario =
-                isset($_POST['default_scenario'])
-                    ? sanitize_key(
-                        wp_unslash($_POST['default_scenario'])
-                    )
-                    : 'approved';
-
-            $allowed_scenarios = [
-                'approved',
-                'rejected',
-                'pending',
-                'cancelled',
-                'technical_error',
+            $settings=[
+                'enabled'=>isset($_POST['enabled']),
+                'environment'=>$environment,
+                'sandbox'=>$this->paypal_env_from_post('sandbox',is_array($current['sandbox']??null)?$current['sandbox']:[]),
+                'live'=>$this->paypal_env_from_post('live',is_array($current['live']??null)?$current['live']:[]),
             ];
 
-            if (
-                !in_array(
-                    $default_scenario,
-                    $allowed_scenarios,
-                    true
-                )
-            ) {
-                $default_scenario = 'approved';
+            if($environment==='live'&&!$this->complete($settings['live'])){
+                $settings['environment']='sandbox';
+                OptiGrid_Subscriptions_Gateway_Settings::save_gateway('paypal',$settings);
+                $this->redirect('paypal_live_incomplete');
             }
-
-            $settings['default_scenario'] =
-                $default_scenario;
         }
 
-        if ($gateway_id === 'paypal') {
-            $current =
-                OptiGrid_Subscriptions_Gateway_Settings::for_gateway(
-                    'paypal'
-                );
-
-            $client_id =
-                isset($_POST['client_id'])
-                    ? sanitize_text_field(
-                        wp_unslash($_POST['client_id'])
-                    )
-                    : '';
-
-            $client_secret =
-                isset($_POST['client_secret'])
-                    ? sanitize_text_field(
-                        wp_unslash($_POST['client_secret'])
-                    )
-                    : '';
-
-            if ($client_id === '') {
-                $client_id =
-                    (string) ($current['client_id'] ?? '');
+        OptiGrid_Subscriptions_Gateway_Settings::save_gateway($gateway_id,$settings);
+        $safe=$settings;
+        if($gateway_id==='paypal'){
+            foreach(['sandbox','live'] as $env){
+                $configured=!empty($safe[$env]['client_secret']);
+                unset($safe[$env]['client_secret']);
+                $safe[$env]['client_secret_configured']=$configured;
             }
-
-            if ($client_secret === '') {
-                $client_secret =
-                    (string) ($current['client_secret'] ?? '');
-            }
-
-            $webhook_id = isset($_POST['webhook_id'])
-                ? sanitize_text_field(wp_unslash($_POST['webhook_id']))
-                : '';
-
-            $settings['environment'] = 'sandbox';
-            $settings['client_id'] = $client_id;
-            $settings['client_secret'] = $client_secret;
-            $settings['webhook_id'] = $webhook_id !== ''
-                ? $webhook_id
-                : (string) ($current['webhook_id'] ?? '');
         }
-
-        OptiGrid_Subscriptions_Gateway_Settings::save_gateway(
-            $gateway_id,
-            $settings
-        );
-
-        $hook_settings = $settings;
-
-        if (isset($hook_settings['client_secret'])) {
-            unset($hook_settings['client_secret']);
-            $hook_settings['client_secret_configured'] =
-                ($settings['client_secret'] ?? '') !== '';
-        }
-
-        do_action(
-            'optigrid_subscriptions_gateway_settings_saved',
-            $gateway_id,
-            $hook_settings
-        );
-
+        do_action('optigrid_subscriptions_gateway_settings_saved',$gateway_id,$safe);
         $this->redirect('saved');
+    }
+
+    private function paypal_env_from_post(string $env,array $current): array
+    {
+        $prefix='paypal_'.$env.'_';
+        $out=[];
+        foreach(['client_id','client_secret','webhook_id'] as $k){
+            $name=$prefix.$k;
+            $value=isset($_POST[$name])?sanitize_text_field(wp_unslash($_POST[$name])):'';
+            if($value===''){$value=(string)($current[$k]??'');}
+            $out[$k]=$value;
+        }
+        return $out;
+    }
+
+    private function complete(array $s): bool
+    {
+        return trim((string)($s['client_id']??''))!=='' && trim((string)($s['client_secret']??''))!=='' && trim((string)($s['webhook_id']??''))!=='';
     }
 
     private function redirect(string $status): void
     {
-        $url = add_query_arg(
-            [
-                'page' => 'optigrid-subscriptions',
-                'gateway_updated' => sanitize_key($status),
-            ],
-            admin_url('admin.php')
-        );
-
-        wp_safe_redirect($url);
+        wp_safe_redirect(add_query_arg(['page'=>'optigrid-subscriptions','gateway_updated'=>sanitize_key($status)],admin_url('admin.php')));
         exit;
     }
 
-    public static function nonce_action(): string
-    {
-        return self::NONCE_ACTION;
-    }
-
-    public static function nonce_name(): string
-    {
-        return self::NONCE_NAME;
-    }
-
-    public static function form_action(): string
-    {
-        return self::ACTION;
-    }
+    public static function nonce_action(): string{return self::NONCE_ACTION;}
+    public static function nonce_name(): string{return self::NONCE_NAME;}
+    public static function form_action(): string{return self::ACTION;}
 }

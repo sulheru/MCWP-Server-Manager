@@ -34,9 +34,10 @@ final class OptiGrid_Subscriptions_PayPal_Webhook_Controller
     public function handle(WP_REST_Request $request): WP_REST_Response
     {
         try {
-            $settings=OptiGrid_Subscriptions_Gateway_Settings::for_gateway('paypal');
-            $webhook_id=trim((string)($settings['webhook_id'] ?? ''));
-            if($webhook_id===''){return new WP_REST_Response(['ok'=>false,'error'=>'paypal_webhook_not_configured'],503);}
+            $environment=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment();
+            $settings=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_settings($environment);
+            $webhook_id=trim((string)$settings['webhook_id']);
+            if($webhook_id===''){return new WP_REST_Response(['ok'=>false,'error'=>'paypal_webhook_not_configured','environment'=>$environment],503);}
 
             $event=$request->get_json_params();
             if(!is_array($event)){return new WP_REST_Response(['ok'=>false,'error'=>'invalid_json'],400);}
@@ -49,7 +50,7 @@ final class OptiGrid_Subscriptions_PayPal_Webhook_Controller
                 'transmission_sig'=>(string)$request->get_header('paypal-transmission-sig'),
             ];
 
-            $client=new OptiGrid_Subscriptions_PayPal_Client((string)($settings['client_id'] ?? ''),(string)($settings['client_secret'] ?? ''));
+            $client=new OptiGrid_Subscriptions_PayPal_Client($settings['client_id'],$settings['client_secret'],$environment);
             if(!$client->verify_webhook_signature($headers,$event,$webhook_id)){
                 return new WP_REST_Response(['ok'=>false,'error'=>'invalid_signature'],401);
             }

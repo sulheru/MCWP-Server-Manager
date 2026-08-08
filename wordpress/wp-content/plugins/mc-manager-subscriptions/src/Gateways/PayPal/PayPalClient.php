@@ -13,17 +13,22 @@ if (!defined('ABSPATH')) {
  */
 final class OptiGrid_Subscriptions_PayPal_Client
 {
-    private const BASE_URL = 'https://api-m.sandbox.paypal.com';
+    private const SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
+    private const LIVE_BASE_URL = 'https://api-m.paypal.com';
 
     private string $client_id;
     private string $client_secret;
+    private string $environment;
 
     public function __construct(
         string $client_id,
-        string $client_secret
+        string $client_secret,
+        string $environment = 'sandbox'
     ) {
         $this->client_id = trim($client_id);
         $this->client_secret = trim($client_secret);
+        $environment = sanitize_key($environment);
+        $this->environment = $environment === 'live' ? 'live' : 'sandbox';
     }
 
     public function configured(): bool
@@ -140,16 +145,21 @@ final class OptiGrid_Subscriptions_PayPal_Client
         return strtoupper((string)($response['verification_status'] ?? ''))==='SUCCESS';
     }
 
+    private function base_url(): string
+    {
+        return $this->environment === 'live' ? self::LIVE_BASE_URL : self::SANDBOX_BASE_URL;
+    }
+
     private function access_token(): string
     {
         if (!$this->configured()) {
             throw new RuntimeException(
-                'Las credenciales Sandbox de PayPal no están configuradas.'
+                'Las credenciales de PayPal para el entorno activo no están configuradas.'
             );
         }
 
         $response = wp_remote_post(
-            self::BASE_URL . '/v1/oauth2/token',
+            $this->base_url() . '/v1/oauth2/token',
             [
                 'timeout' => 30,
                 'headers' => [
@@ -214,7 +224,7 @@ final class OptiGrid_Subscriptions_PayPal_Client
         }
 
         $response = wp_remote_request(
-            self::BASE_URL . $path,
+            $this->base_url() . $path,
             $args
         );
 

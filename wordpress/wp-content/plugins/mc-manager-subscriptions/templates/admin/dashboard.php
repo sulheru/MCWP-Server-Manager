@@ -40,6 +40,8 @@ $gateway_update = isset($_GET['gateway_updated'])
                 ?>
             </p>
         </div>
+    <?php elseif ($gateway_update === 'paypal_live_incomplete') : ?>
+        <div class="notice notice-error"><p><strong>PayPal Live no se ha activado.</strong> Completa Client ID, Client Secret y Webhook ID Live. El entorno permanece en Sandbox.</p></div>
     <?php elseif ($gateway_update === 'unknown_gateway') : ?>
         <div class="notice notice-error">
             <p>
@@ -365,78 +367,35 @@ $gateway_update = isset($_GET['gateway_updated'])
 
                         <?php if ($gateway_id === 'paypal') : ?>
                             <?php
-                            $paypal_settings =
-                                OptiGrid_Subscriptions_Gateway_Settings::for_gateway(
-                                    'paypal'
-                                );
+                            $paypal_environment=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment();
+                            $paypal_sandbox=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_settings('sandbox');
+                            $paypal_live=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_settings('live');
+                            $paypal_sandbox_ready=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_complete('sandbox');
+                            $paypal_live_ready=OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_complete('live');
+                            $paypal_webhook_url=OptiGrid_Subscriptions_PayPal_Webhook_Controller::endpoint_url();
                             ?>
-                            <p>
-                                <strong>
-                                    <?php
-                                    echo esc_html__(
-                                        'Entorno',
-                                        'optigrid-subscriptions'
-                                    );
-                                    ?>:
-                                </strong>
-                                Sandbox
+                            <div class="notice <?php echo $paypal_environment === 'live' ? 'notice-error' : 'notice-info'; ?> inline">
+                                <p><strong>Entorno activo: <?php echo esc_html($paypal_environment === 'live' ? 'LIVE' : 'SANDBOX'); ?></strong> — <?php echo esc_html($paypal_environment === 'live' ? 'Las nuevas operaciones procesan dinero real.' : 'Las nuevas operaciones son de prueba.'); ?></p>
+                            </div>
+                            <p><label for="paypal-environment"><strong>Entorno activo</strong></label><br>
+                                <select id="paypal-environment" name="environment">
+                                    <option value="sandbox" <?php selected($paypal_environment,'sandbox'); ?>>Sandbox — pruebas</option>
+                                    <option value="live" <?php selected($paypal_environment,'live'); ?> <?php disabled(!$paypal_live_ready); ?>>Live — dinero real<?php echo !$paypal_live_ready ? ' (configuración incompleta)' : ''; ?></option>
+                                </select>
                             </p>
-
-                            <p>
-                                <label for="paypal-client-id">
-                                    <strong>Client ID Sandbox</strong>
-                                </label>
-                                <br>
-                                <input
-                                    id="paypal-client-id"
-                                    name="client_id"
-                                    type="text"
-                                    class="regular-text"
-                                    autocomplete="off"
-                                    value="<?php echo esc_attr((string) ($paypal_settings['client_id'] ?? '')); ?>"
-                                >
-                            </p>
-
-                            <p>
-                                <label for="paypal-client-secret">
-                                    <strong>Client Secret Sandbox</strong>
-                                </label>
-                                <br>
-                                <input
-                                    id="paypal-client-secret"
-                                    name="client_secret"
-                                    type="password"
-                                    class="regular-text"
-                                    autocomplete="new-password"
-                                    value=""
-                                    placeholder="<?php echo esc_attr(
-                                        !empty($paypal_settings['client_secret'])
-                                            ? 'Configurado — dejar vacío para conservar'
-                                            : 'Introduce el Client Secret'
-                                    ); ?>"
-                                >
-                            </p>
-
-                            <p>
-                                <label for="paypal-webhook-url"><strong>Webhook URL</strong></label><br>
-                                <input id="paypal-webhook-url" type="text" class="large-text code" readonly
-                                    value="<?php echo esc_attr(OptiGrid_Subscriptions_PayPal_Webhook_Controller::endpoint_url()); ?>">
-                            </p>
-
-                            <p>
-                                <label for="paypal-webhook-id"><strong>Webhook ID Sandbox</strong></label><br>
-                                <input id="paypal-webhook-id" name="webhook_id" type="text" class="regular-text" autocomplete="off"
-                                    value="<?php echo esc_attr((string)($paypal_settings['webhook_id'] ?? '')); ?>">
-                            </p>
-
-                            <p class="description">
-                                <?php
-                                echo esc_html__(
-                                    'S3.1 utiliza exclusivamente PayPal Sandbox. El secreto no se muestra de nuevo ni debe incluirse en Git.',
-                                    'optigrid-subscriptions'
-                                );
-                                ?>
-                            </p>
+                            <hr><h4>PayPal Sandbox</h4>
+                            <p>Estado: <strong><?php echo esc_html($paypal_sandbox_ready ? 'Configurado' : 'Incompleto'); ?></strong></p>
+                            <p><label><strong>Client ID Sandbox</strong></label><br><input name="paypal_sandbox_client_id" type="text" class="regular-text" autocomplete="off" value="<?php echo esc_attr($paypal_sandbox['client_id']); ?>"></p>
+                            <p><label><strong>Client Secret Sandbox</strong></label><br><input name="paypal_sandbox_client_secret" type="password" class="regular-text" autocomplete="new-password" value="" placeholder="<?php echo esc_attr($paypal_sandbox['client_secret'] !== '' ? 'Configurado — dejar vacío para conservar' : 'Introduce el Client Secret Sandbox'); ?>"></p>
+                            <p><label><strong>Webhook ID Sandbox</strong></label><br><input name="paypal_sandbox_webhook_id" type="text" class="regular-text" autocomplete="off" value="<?php echo esc_attr($paypal_sandbox['webhook_id']); ?>"></p>
+                            <hr><h4>PayPal Live</h4>
+                            <p>Estado: <strong><?php echo esc_html($paypal_live_ready ? 'Configurado' : 'Sin configurar'); ?></strong></p>
+                            <p><label><strong>Client ID Live</strong></label><br><input name="paypal_live_client_id" type="text" class="regular-text" autocomplete="off" value="<?php echo esc_attr($paypal_live['client_id']); ?>"></p>
+                            <p><label><strong>Client Secret Live</strong></label><br><input name="paypal_live_client_secret" type="password" class="regular-text" autocomplete="new-password" value="" placeholder="<?php echo esc_attr($paypal_live['client_secret'] !== '' ? 'Configurado — dejar vacío para conservar' : 'Introduce el Client Secret Live'); ?>"></p>
+                            <p><label><strong>Webhook ID Live</strong></label><br><input name="paypal_live_webhook_id" type="text" class="regular-text" autocomplete="off" value="<?php echo esc_attr($paypal_live['webhook_id']); ?>"></p>
+                            <hr>
+                            <p><label><strong>Webhook URL de esta instalación</strong></label><br><input type="text" class="large-text code" readonly value="<?php echo esc_attr($paypal_webhook_url); ?>"></p>
+                            <p class="description">Sandbox y Live conservan configuraciones independientes. Cambiar de entorno no borra el otro. Live no puede seleccionarse hasta que esté completamente configurado.</p>
                         <?php endif; ?>
 
                         <p>

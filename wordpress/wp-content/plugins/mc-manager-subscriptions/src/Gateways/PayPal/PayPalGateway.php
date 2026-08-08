@@ -27,7 +27,7 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
     public function get_description(): string
     {
         return __(
-            'Pago mediante PayPal Sandbox. No mueve dinero real durante esta fase.',
+            'Pago mediante PayPal. El entorno activo se configura desde administración.',
             'optigrid-subscriptions'
         );
     }
@@ -39,7 +39,7 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
 
     public function is_test_gateway(): bool
     {
-        return true;
+        return OptiGrid_Subscriptions_Gateway_Settings::paypal_environment() === 'sandbox';
     }
 
     /**
@@ -54,14 +54,17 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
                 $this->get_id()
             );
 
+        $environment = OptiGrid_Subscriptions_Gateway_Settings::paypal_environment();
         return [
             'id' => $this->get_id(),
             'name' => $this->get_name(),
             'enabled' => !empty($settings['enabled']),
             'available' => $this->is_available(),
-            'test_gateway' => true,
-            'environment' => 'sandbox',
+            'test_gateway' => $environment === 'sandbox',
+            'environment' => $environment,
             'credentials_configured' => $this->is_available(),
+            'sandbox_configured' => OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_complete('sandbox'),
+            'live_configured' => OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_complete('live'),
         ];
     }
 
@@ -219,7 +222,7 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
                 )
             ),
             'message' =>
-                'PayPal Sandbox capture: '
+                'PayPal capture: '
                 . ($status !== '' ? $status : 'UNKNOWN'),
             'processed_at' => current_time('mysql', true),
             'raw' => $response,
@@ -246,7 +249,7 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
                 (string) $order['currency']
             ),
             'message' =>
-                'El comprador canceló el checkout de PayPal Sandbox.',
+                'El comprador canceló el checkout de PayPal.',
             'processed_at' => current_time('mysql', true),
             'raw' => [
                 'paypal_order_id' => $paypal_order_id,
@@ -336,14 +339,12 @@ final class OptiGrid_Subscriptions_PayPal_Gateway implements
 
     private function client(): OptiGrid_Subscriptions_PayPal_Client
     {
-        $settings =
-            OptiGrid_Subscriptions_Gateway_Settings::for_gateway(
-                $this->get_id()
-            );
-
+        $environment = OptiGrid_Subscriptions_Gateway_Settings::paypal_environment();
+        $settings = OptiGrid_Subscriptions_Gateway_Settings::paypal_environment_settings($environment);
         return new OptiGrid_Subscriptions_PayPal_Client(
-            (string) ($settings['client_id'] ?? ''),
-            (string) ($settings['client_secret'] ?? '')
+            $settings['client_id'],
+            $settings['client_secret'],
+            $environment
         );
     }
 

@@ -122,7 +122,7 @@ final class OptiGrid_Subscriptions_PayPal_Return_Controller
 
             $this->render(
                 'Pago cancelado',
-                'La operación se canceló en PayPal Sandbox.',
+                'La operación se canceló en PayPal.',
                 false
             );
         } catch (Throwable $e) {
